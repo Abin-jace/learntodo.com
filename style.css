@@ -1,0 +1,184 @@
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial, sans-serif;
+}
+
+body{
+  background:#0f172a;
+  color:white;
+  min-height:100vh;
+  padding:30px;
+}
+
+/* HEADER */
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:30px;
+  flex-wrap:wrap;
+  gap:20px;
+}
+
+.header h1{
+  font-size:38px;
+}
+
+.header p{
+  color:#94a3b8;
+  margin-top:8px;
+}
+
+/* BUTTONS */
+
+.add-btn,
+.save-btn{
+  background:#38bdf8;
+  color:black;
+  border:none;
+  padding:14px 22px;
+  border-radius:12px;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.add-btn:hover,
+.save-btn:hover{
+  transform:translateY(-2px);
+}
+
+.close-btn{
+  background:#ef4444;
+  color:white;
+  border:none;
+  padding:12px 20px;
+  border-radius:10px;
+  cursor:pointer;
+  margin-top:20px;
+}
+
+/* NOTES GRID */
+
+.notes-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(320px,1fr));
+
+  gap:20px;
+}
+
+.note-card{
+  background:#1e293b;
+  border-radius:20px;
+  padding:25px;
+  cursor:pointer;
+  transition:0.3s;
+  border:1px solid #334155;
+}
+
+.note-card:hover{
+  transform:translateY(-5px);
+  border-color:#38bdf8;
+}
+
+.note-title{
+  font-size:24px;
+  margin-bottom:20px;
+  color:#38bdf8;
+}
+
+.note-preview{
+  color:#cbd5e1;
+  line-height:1.6;
+  margin-bottom:20px;
+  white-space:pre-wrap;
+}
+
+.note-meta{
+  color:#94a3b8;
+  font-size:14px;
+}
+
+/* EMPTY */
+
+.empty{
+  text-align:center;
+  margin-top:80px;
+  color:#94a3b8;
+  font-size:20px;
+}
+
+/* MODALS */
+
+.modal{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+  z-index:1000;
+}
+
+.modal-content{
+  background:#1e293b;
+  width:100%;
+  max-width:800px;
+  border-radius:20px;
+  padding:30px;
+  max-height:90vh;
+  overflow-y:auto;
+}
+
+.modal-content h2{
+  margin-bottom:20px;
+  color:#38bdf8;
+}
+
+/* INPUTS */
+
+input,
+textarea,
+select{
+  width:100%;
+  background:#334155;
+  border:none;
+  border-radius:12px;
+  padding:14px;
+  color:white;
+  margin-bottom:20px;
+  font-size:16px;
+}
+
+textarea{
+  resize:vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus{
+  outline:none;
+  border:1px solid #38bdf8;
+}
+
+/* VIEW NOTE */
+
+.view-content{
+  line-height:1.8;
+  margin-top:20px;
+  white-space:pre-wrap;
+  color:#e2e8f0;
+}
+
+.view-meta{
+  margin-top:25px;
+  color:#94a3b8;
+}

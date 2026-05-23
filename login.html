@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <title>Login</title>
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="supabase.js"></script>
+
+</head>
+
+<body>
+
+  <div class="register-box">
+
+    <h1>🔐 Login</h1>
+
+    <input
+      type="email"
+      id="email"
+      placeholder="Email"
+    >
+
+    <input
+      type="password"
+      id="password"
+      placeholder="Password"
+    >
+
+    <button onclick="login()">
+      Login
+    </button>
+
+    <br><br>
+
+    <button onclick="goRegister()">
+      Create Account
+    </button>
+
+  </div>
+
+  <script>
+
+    async function login(){
+
+      const email =
+        document.getElementById("email").value
+
+      const password =
+        document.getElementById("password").value
+
+      const {
+        data,
+        error
+      } = await supabaseClient.auth
+            .signInWithPassword({
+              email,
+              password
+            })
+
+      if(error){
+
+        alert(error.message)
+
+        return
+
+      }
+
+      window.location.href =
+        "index.html"
+
+    }
+
+    function goRegister(){
+
+      window.location.href =
+        "register.html"
+
+    }
+
+  </script>
+
+</body>
+

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <title>Notes</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+
+  <style>
+
+    body{
+      background:#0f172a;
+      color:white;
+      font-family:Arial;
+      padding:30px;
+    }
+
+    .card{
+      background:#1e293b;
+      padding:20px;
+      border-radius:15px;
+      margin-bottom:10px;
+    }
+
+    button{
+      padding:10px 15px;
+      border:none;
+      border-radius:10px;
+      background:#38bdf8;
+      font-weight:bold;
+      cursor:pointer;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<h1>Notes</h1>
+
+<button onclick="createNote()">+ Add Note</button>
+<button onclick="logout()">Logout</button>
+
+<div id="notes">Loading...</div>
+
+<script>
+
+let sessionChecked = false
+
+// ============================
+// 1. PROTECT PAGE FIRST
+// ============================
+
+async function protectPage(){
+
+  const { data } =
+    await supabaseClient.auth.getSession()
+
+  if(!data.session){
+    window.location.href = "login.html"
+    return
+  }
+
+  sessionChecked = true
+  loadNotes()
+  loadUsers()
+}
+
+protectPage()
+
+// ============================
+// 2. LOAD NOTES
+// ============================
+
+async function loadNotes(){
+
+  if(!sessionChecked) return
+
+  const { data } =
+    await supabaseClient
+      .from("notes")
+      .select(`
+        *,
+        profiles(name)
+      `)
+      .order("created_at",{ascending:false})
+
+  let html = ""
+
+  data.forEach(n => {
+
+    html += `
+      <div class="card">
+        <h3>${n.title}</h3>
+        <p>${n.content}</p>
+        <small>By ${n.profiles?.name}</small>
+      </div>
+    `
+  })
+
+  document.getElementById("notes").innerHTML = html
+}
+
+// ============================
+// 3. CREATE NOTE
+// ============================
+
+async function createNote(){
+
+  const title = prompt("Title")
+  const content = prompt("Content")
+
+  const user = await supabaseClient.auth.getUser()
+
+  await supabaseClient.from("notes").insert([
+    {
+      title,
+      content,
+      user_id: user.data.user.id
+    }
+  ])
+
+  loadNotes()
+}
+
+// ============================
+// 4. LOGOUT
+// ============================
+
+async function logout(){
+
+  await supabaseClient.auth.signOut()
+  window.location.href = "login.html"
+
+}
+
+</script>
+
+</body>
+</html>
