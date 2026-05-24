@@ -1,6 +1,6 @@
 
 /* =========================
-   BACKGROUND (ALL PAGES)
+   BASE RESET
 ========================= */
 
 body {
@@ -11,9 +11,13 @@ body {
   overflow: hidden;
   color: white;
   position: relative;
+  background: #0f172a;
 }
 
-/* BACKGROUND IMAGE */
+/* =========================
+   BACKGROUND IMAGE + BLUR
+========================= */
+
 body::before {
   content: "";
   position: fixed;
@@ -24,7 +28,7 @@ body::before {
 
   background-size: cover;
 
-  /* soft blur */
+  /* soft blur (~20% feel) */
   filter: blur(12px);
   transform: scale(1.1);
 
@@ -40,7 +44,10 @@ body::after {
   z-index: 0;
 }
 
-/* UI ABOVE BG */
+/* =========================
+   MAIN LAYERS
+========================= */
+
 .sidebar,
 .main {
   position: relative;
@@ -48,7 +55,7 @@ body::after {
 }
 
 /* =========================
-   SIDEBAR
+   SIDEBAR (GLASS)
 ========================= */
 
 .sidebar {
@@ -89,7 +96,7 @@ body::after {
 }
 
 /* =========================
-   MAIN
+   MAIN AREA
 ========================= */
 
 .main {
@@ -99,7 +106,32 @@ body::after {
 }
 
 /* =========================
-   CARDS (GLASS TILES)
+   GRID LAYOUT (HOME PAGE)
+========================= */
+
+.grid {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.left {
+  flex: 2;
+}
+
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.small {
+  height: 220px;
+}
+
+/* =========================
+   GLASS CARDS
 ========================= */
 
 .card {
@@ -114,7 +146,24 @@ body::after {
 }
 
 /* =========================
-   PROGRESS BAR
+   INPUTS / TEXTAREA
+========================= */
+
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+
+  border-radius: 10px;
+  border: none;
+
+  background: rgba(255,255,255,0.08);
+  color: white;
+  outline: none;
+}
+
+/* =========================
+   PROGRESS BAR (Dashboard use)
 ========================= */
 
 .progress-bar {
@@ -127,4 +176,498 @@ body::after {
 .progress-fill {
   height: 100%;
   background: #38bdf8;
+}
+
+/* =========================
+   DIAL CHART (HOME)
+========================= */
+
+.dial-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 10px auto;
+}
+
+.dial {
+  transform: rotate(-90deg);
+}
+
+.dial circle {
+  fill: none;
+  stroke-width: 10;
+}
+
+.dial .bg {
+  stroke: rgba(255,255,255,0.15);
+}
+
+.dial .progress {
+  stroke: #38bdf8;
+  stroke-dasharray: 251;
+  stroke-dashoffset: 251;
+  transition: 0.8s ease;
+}
+
+.dial-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* =========================
+   SCROLL SAFETY
+========================= */
+
+.main {
+  overflow-y: auto;
+}
+
+/* =========================================
+   HOME PAGE ONLY
+========================================= */
+
+.home-page .home-main{
+  display:flex;
+  gap:30px;
+  align-items:center;
+  height:100%;
+}
+
+/* LEFT */
+.home-page .home-left{
+  flex:1;
+}
+
+/* CENTER */
+.home-page .home-center{
+  flex:2;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* RIGHT */
+.home-page .home-right{
+  width:300px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+/* HERO CARD */
+.home-page .hero-card{
+  padding:30px;
+}
+
+/* HOME TILES */
+.home-page .home-tile{
+  min-height:260px;
+}
+
+/* =========================================
+   FLIP CLOCK
+========================================= */
+
+.home-page .flip-clock-card{
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+
+  border:1px solid rgba(255,255,255,0.12);
+
+  border-radius:20px;
+
+  padding:40px;
+
+  text-align:center;
+
+  min-width:500px;
+}
+
+/* BIG CLOCK */
+.home-page .flip-clock{
+
+  font-size:90px;
+  font-weight:700;
+
+  letter-spacing:8px;
+
+  font-family: monospace;
+
+  text-shadow:
+    0 0 10px rgba(255,255,255,0.2);
+
+}
+
+/* DATE */
+.home-page .clock-date{
+  margin-top:10px;
+  opacity:0.8;
+}
+
+/* =========================================
+   DIAL
+========================================= */
+
+.home-page .dial-wrapper{
+  position:relative;
+  width:120px;
+  height:120px;
+  margin:auto;
+}
+
+.home-page .dial{
+  transform:rotate(-90deg);
+}
+
+.home-page .dial circle{
+  fill:none;
+  stroke-width:10;
+}
+
+.home-page .dial .bg{
+  stroke:rgba(255,255,255,0.15);
+}
+
+.home-page .dial .progress{
+  stroke:#38bdf8;
+
+  stroke-dasharray:251;
+  stroke-dashoffset:251;
+
+  transition:0.8s ease;
+}
+
+.home-page .dial-text{
+  position:absolute;
+  top:50%;
+  left:50%;
+
+  transform:translate(-50%,-50%);
+
+  font-size:20px;
+  font-weight:bold;
+}
+
+/* =========================================
+   HOME PAGE ONLY
+========================================= */
+
+.home-page .home-main{
+  display:flex;
+  gap:30px;
+  align-items:center;
+  height:100%;
+  position:relative;
+}
+
+/* LEFT */
+.home-page .home-left{
+  flex:1;
+}
+
+/* CENTER */
+.home-page .home-center{
+  flex:2;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* RIGHT */
+.home-page .home-right{
+  width:300px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+/* HERO CARD */
+.home-page .hero-card{
+  padding:30px;
+}
+
+/* HOME TILES */
+.home-page .home-tile{
+  min-height:260px;
+}
+
+/* =========================================
+   FLIP CLOCK
+========================================= */
+
+.home-page .flip-clock-card{
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+
+  border:1px solid rgba(255,255,255,0.12);
+
+  border-radius:20px;
+
+  padding:40px;
+
+  text-align:center;
+
+  min-width:500px;
+}
+
+/* BIG CLOCK */
+.home-page .flip-clock{
+
+  font-size:90px;
+  font-weight:700;
+
+  letter-spacing:8px;
+
+  font-family: monospace;
+
+  text-shadow:
+    0 0 10px rgba(255,255,255,0.2);
+
+}
+
+/* DATE */
+.home-page .clock-date{
+  margin-top:10px;
+  opacity:0.8;
+}
+
+/* =========================================
+   DIAL
+========================================= */
+
+.home-page .dial-wrapper{
+  position:relative;
+  width:120px;
+  height:120px;
+  margin:auto;
+}
+
+.home-page .dial{
+  transform:rotate(-90deg);
+}
+
+.home-page .dial circle{
+  fill:none;
+  stroke-width:10;
+}
+
+.home-page .dial .bg{
+  stroke:rgba(255,255,255,0.15);
+}
+
+.home-page .dial .progress{
+  stroke:#38bdf8;
+
+  stroke-dasharray:251;
+  stroke-dashoffset:251;
+
+  transition:0.8s ease;
+}
+
+.home-page .dial-text{
+  position:absolute;
+  top:50%;
+  left:50%;
+
+  transform:translate(-50%,-50%);
+
+  font-size:20px;
+  font-weight:bold;
+}
+
+/* =========================================
+   TOP BAR
+========================================= */
+
+.home-page .top-bar{
+
+  position:absolute;
+
+  top:20px;
+  right:30px;
+
+  display:flex;
+  align-items:center;
+  gap:15px;
+
+  z-index:5;
+}
+
+/* USER */
+.home-page .top-user{
+
+  background:rgba(255,255,255,0.08);
+
+  backdrop-filter:blur(12px);
+
+  padding:10px 16px;
+
+  border-radius:12px;
+
+  border:1px solid rgba(255,255,255,0.1);
+}
+
+/* LOGOUT */
+.home-page .logout-btn{
+
+  background:rgba(255,255,255,0.08);
+
+  border:1px solid rgba(255,255,255,0.1);
+
+  color:white;
+
+  padding:10px 16px;
+
+  border-radius:12px;
+
+  cursor:pointer;
+
+  backdrop-filter:blur(12px);
+}
+
+.home-page .logout-btn:hover{
+  background:rgba(255,255,255,0.15);
+}
+
+
+
+/* =========================================
+   NOTIFICATION BOX
+========================================= */
+
+.notification-box{
+
+  position:absolute;
+
+  top:90px;
+  right:30px;
+
+  min-width:260px;
+
+  padding:14px;
+
+  border-radius:14px;
+
+  background:rgba(255,255,255,0.08);
+
+  backdrop-filter:blur(12px);
+
+  border:1px solid rgba(255,255,255,0.1);
+
+  opacity:0;
+
+  transform:translateY(-10px);
+
+  transition:0.4s ease;
+
+  z-index:20;
+}
+
+/* SHOW */
+.show-notification{
+  opacity:1;
+  transform:translateY(0);
+}
+
+/* =========================================
+   NOTIFICATION SYSTEM
+========================================= */
+
+.home-page .notif-wrapper{
+  position:relative;
+}
+
+/* BELL BUTTON */
+.home-page .notif-btn{
+
+  position:relative;
+
+  background:rgba(255,255,255,0.08);
+
+  border:1px solid rgba(255,255,255,0.1);
+
+  color:white;
+
+  width:45px;
+  height:45px;
+
+  border-radius:12px;
+
+  cursor:pointer;
+
+  backdrop-filter:blur(12px);
+}
+
+/* BADGE */
+.home-page .notif-count{
+
+  position:absolute;
+
+  top:-6px;
+  right:-6px;
+
+  width:18px;
+  height:18px;
+
+  border-radius:50%;
+
+  background:red;
+
+  font-size:11px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* DROPDOWN */
+.home-page .notif-dropdown{
+
+  position:absolute;
+
+  top:60px;
+  right:0;
+
+  width:300px;
+
+  max-height:400px;
+
+  overflow:auto;
+
+  padding:15px;
+
+  border-radius:16px;
+
+  background:rgba(255,255,255,0.08);
+
+  backdrop-filter:blur(14px);
+
+  border:1px solid rgba(255,255,255,0.1);
+
+  display:none;
+
+  z-index:100;
+}
+
+/* SHOW */
+.home-page .show-dropdown{
+  display:block;
+}
+
+/* ITEM */
+.home-page .notif-item{
+
+  padding:10px;
+
+  margin-bottom:10px;
+
+  border-radius:10px;
+
+  background:rgba(255,255,255,0.05);
 }

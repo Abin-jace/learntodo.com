@@ -2,6 +2,9 @@
 <html>
 
 <head>
+
+  <meta charset="UTF-8">
+
   <title>Home</title>
 
   <link rel="stylesheet" href="style.css">
@@ -11,10 +14,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+
 </head>
 
-<body>
+<body class="home-page">
 
+<!-- SIDEBAR -->
 <div class="sidebar">
 
   <button class="nav-btn" onclick="go('home.html')">
@@ -31,58 +36,387 @@
 
 </div>
 
-<div class="main">
+<!-- MAIN -->
+<div class="main home-main">
 
-  <h1 id="greet">Hey 👋</h1>
+  <!-- TOP BAR -->
+  <div class="top-bar">
 
-  <h2 id="clock"></h2>
+    <!-- NOTIFICATION -->
+    <div class="notif-wrapper">
 
-  <div class="card">
-    <h3>Progress Overview</h3>
-    <div id="progress"></div>
+      <button class="notif-btn" onclick="toggleNotif()">
+
+        <i class="fa-solid fa-bell"></i>
+
+        <span id="notifCount" class="notif-count">
+          0
+        </span>
+
+      </button>
+
+      <!-- DROPDOWN -->
+      <div id="notifDropdown" class="notif-dropdown">
+
+        <h3>Notifications</h3>
+
+        <div id="notifList">
+          No notifications
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- USER -->
+    <div class="top-user" id="topUser">
+      User
+    </div>
+
+    <!-- LOGOUT -->
+    <button class="logout-btn" onclick="logout()">
+
+      <i class="fa-solid fa-right-from-bracket"></i>
+
+      Logout
+
+    </button>
+
+  </div>
+
+  <!-- LEFT -->
+  <div class="home-left">
+
+    <div class="card hero-card">
+
+      <h1 id="greet">Hey 👋</h1>
+
+      <p>
+        Focus on your learning today 🚀
+      </p>
+
+    </div>
+
+  </div>
+
+  <!-- CENTER -->
+  <div class="home-center">
+
+    <div class="flip-clock-card">
+
+      <div id="clock" class="flip-clock">
+        00:00:00
+      </div>
+
+      <div id="dateText" class="clock-date">
+        Monday
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="home-right">
+
+    <!-- NOTE -->
+    <div class="card home-tile">
+
+      <h3>📝 Quick Note</h3>
+
+      <input id="noteTitle" placeholder="Title">
+
+      <textarea
+        id="noteContent"
+        placeholder="Write something..."></textarea>
+
+      <button class="nav-btn" onclick="saveNote()">
+        Save
+      </button>
+
+      <p id="noteMsg"></p>
+
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="card home-tile">
+
+      <h3>📈 Progress</h3>
+
+      <div class="dial-wrapper">
+
+        <svg class="dial" viewBox="0 0 100 100">
+
+          <circle class="bg" cx="50" cy="50" r="40"></circle>
+
+          <circle class="progress"
+            cx="50"
+            cy="50"
+            r="40"></circle>
+
+        </svg>
+
+        <div class="dial-text" id="dialPercent">
+          0%
+        </div>
+
+      </div>
+
+      <p>Overall Learning</p>
+
+    </div>
+
   </div>
 
 </div>
 
 <script>
 
-function go(p){ window.location.href = p }
+/* =========================================
+   NAVIGATION
+========================================= */
 
-/* CLOCK */
-setInterval(() => {
-  document.getElementById("clock").innerText =
-    new Date().toLocaleTimeString()
-}, 1000)
-
-/* USER NAME */
-async function setUser(){
-  const { data } = await supabaseClient.auth.getUser()
-  const user = data?.user
-  const name = user?.email?.split("@")[0] || "User"
-  document.getElementById("greet").innerText = `Hey ${name} 👋`
+function go(page){
+  window.location.href = page
 }
 
-/* PROGRESS */
-async function loadProgress(){
+/* =========================================
+   LOGOUT
+========================================= */
 
-  const { data: userData } = await supabaseClient.auth.getUser()
-  const user = userData?.user
+async function logout(){
 
-  const { data } = await supabaseClient
-    .from("progress")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
+  await supabaseClient.auth.signOut()
 
-  document.getElementById("progress").innerHTML = `
-    <p>Linux: ${data?.linux || 0}%</p>
-    <p>Docker: ${data?.docker || 0}%</p>
-    <p>Kubernetes: ${data?.kubernetes || 0}%</p>
-  `
+  window.location.href = "login.html"
+}
+
+/* =========================================
+   CLOCK
+========================================= */
+
+function updateClock(){
+
+  const now = new Date()
+
+  document.getElementById("clock").innerText =
+    now.toLocaleTimeString()
+
+  document.getElementById("dateText").innerText =
+    now.toDateString()
+}
+
+setInterval(updateClock, 1000)
+
+updateClock()
+
+/* =========================================
+   USER
+========================================= */
+
+async function setUser(){
+
+  const { data } =
+    await supabaseClient.auth.getUser()
+
+  const user = data?.user
+
+  if(!user){
+    window.location.href = "login.html"
+    return
+  }
+
+  const name =
+    user.email.split("@")[0]
+
+  document.getElementById("greet").innerText =
+    `Hey ${name} 👋`
+
+  document.getElementById("topUser").innerText =
+    name
 }
 
 setUser()
-loadProgress()
+
+/* =========================================
+   SAVE NOTE + CREATE NOTIFICATION
+========================================= */
+
+async function saveNote(){
+
+  const { data: userData } =
+    await supabaseClient.auth.getUser()
+
+  const user = userData?.user
+
+  const title =
+    document.getElementById("noteTitle").value
+
+  const content =
+    document.getElementById("noteContent").value
+
+  if(!title || !content){
+
+    document.getElementById("noteMsg").innerText =
+      "Fill all fields"
+
+    return
+  }
+
+  /* SAVE NOTE */
+  const { error } =
+    await supabaseClient
+      .from("notes")
+      .insert([{
+        user_id: user.id,
+        title,
+        content
+      }])
+
+  if(error){
+
+    document.getElementById("noteMsg").innerText =
+      error.message
+
+    return
+  }
+
+  /* ADD NOTIFICATION */
+  await supabaseClient
+    .from("notifications")
+    .insert([{
+      message:
+        `${user.email.split("@")[0]} added "${title}"`
+    }])
+
+  document.getElementById("noteMsg").innerText =
+    "Saved ✅"
+
+  document.getElementById("noteTitle").value = ""
+  document.getElementById("noteContent").value = ""
+}
+
+/* =========================================
+   DIAL
+========================================= */
+
+async function loadDial(){
+
+  const { data: userData } =
+    await supabaseClient.auth.getUser()
+
+  const user = userData?.user
+
+  const { data } =
+    await supabaseClient
+      .from("progress")
+      .select("*")
+      .eq("user_id", user.id)
+      .single()
+
+  const total =
+    ((data?.linux || 0) +
+     (data?.docker || 0) +
+     (data?.kubernetes || 0)) / 3
+
+  const percent = Math.round(total)
+
+  document.getElementById("dialPercent").innerText =
+    percent + "%"
+
+  const circle =
+    document.querySelector(".dial .progress")
+
+  const radius = 40
+
+  const circumference =
+    2 * Math.PI * radius
+
+  circle.style.strokeDasharray =
+    circumference
+
+  circle.style.strokeDashoffset =
+    circumference -
+    (percent / 100) * circumference
+}
+
+loadDial()
+
+/* =========================================
+   NOTIFICATIONS
+========================================= */
+
+let notifCount = 0
+
+function toggleNotif(){
+
+  const dropdown =
+    document.getElementById("notifDropdown")
+
+  dropdown.classList.toggle("show-dropdown")
+}
+
+/* LOAD EXISTING */
+async function loadNotifications(){
+
+  const { data } =
+    await supabaseClient
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending:false })
+      .limit(10)
+
+  renderNotifications(data)
+}
+
+/* RENDER */
+function renderNotifications(data){
+
+  const list =
+    document.getElementById("notifList")
+
+  if(!data || data.length === 0){
+
+    list.innerHTML = "No notifications"
+
+    return
+  }
+
+  list.innerHTML =
+    data.map(n => `
+      <div class="notif-item">
+        🔔 ${n.message}
+      </div>
+    `).join("")
+}
+
+/* REALTIME */
+supabaseClient
+  .channel("realtime-notifications")
+
+  .on(
+    "postgres_changes",
+
+    {
+      event:"INSERT",
+      schema:"public",
+      table:"notifications"
+    },
+
+    async () => {
+
+      notifCount++
+
+      document.getElementById("notifCount").innerText =
+        notifCount
+
+      loadNotifications()
+    }
+  )
+
+  .subscribe()
+
+loadNotifications()
 
 </script>
 
