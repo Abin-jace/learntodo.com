@@ -3,7 +3,8 @@
 
 <head>
 
-<meta charset="UTF-8">
+  <meta charset="UTF-8">
+
   <title>Dashboard</title>
 
   <link rel="stylesheet" href="style.css">
@@ -12,77 +13,315 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="supabase.js"></script>
+
 </head>
 
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
 
   <button class="nav-btn" onclick="go('home.html')">
-    <i class="fa-solid fa-house"></i> Home
+    <i class="fa-solid fa-house"></i>
+    Home
   </button>
 
   <button class="nav-btn" onclick="go('index.html')">
-    <i class="fa-solid fa-chart-line"></i> Dashboard
+    <i class="fa-solid fa-chart-line"></i>
+    Dashboard
   </button>
 
   <button class="nav-btn" onclick="go('notes.html')">
-    <i class="fa-solid fa-note-sticky"></i> Notes
+    <i class="fa-solid fa-note-sticky"></i>
+    Notes
   </button>
 
 </div>
 
+<!-- MAIN -->
 <div class="main">
 
-  <h2>Team Progress</h2>
+  <h1>📚 Study Dashboard</h1>
 
-  <div id="content">Loading...</div>
+  <!-- ADD SUBJECT -->
+  <div class="card">
+
+    <h3>Add Subject</h3>
+
+    <input
+      id="subjectName"
+      placeholder="Example: Linux">
+
+    <button class="nav-btn" onclick="addSubject()">
+      Add Subject
+    </button>
+
+    <p id="subjectMsg"></p>
+
+  </div>
+
+  <!-- SUBJECTS -->
+  <div id="subjectsContainer" class="subjects-grid">
+
+  </div>
 
 </div>
 
 <script>
 
-function go(p){ window.location.href = p }
+/* =========================================
+   NAVIGATION
+========================================= */
 
-async function load(){
+function go(page){
+  window.location.href = page
+}
 
-  const { data: users } = await supabaseClient.from("profiles").select("*")
-  const { data: progress } = await supabaseClient.from("progress").select("*")
+/* =========================================
+   GET USER
+========================================= */
+
+async function getUser(){
+
+  const { data } =
+    await supabaseClient.auth.getUser()
+
+  return data?.user
+}
+
+/* =========================================
+   ADD SUBJECT
+========================================= */
+
+async function addSubject(){
+
+  const user = await getUser()
+
+  const name =
+    document.getElementById("subjectName").value
+
+  if(!name){
+
+    document.getElementById("subjectMsg").innerText =
+      "Enter subject name"
+
+    return
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("subjects")
+      .insert([{
+        user_id:user.id,
+        name
+      }])
+
+  if(error){
+
+    document.getElementById("subjectMsg").innerText =
+      error.message
+
+    return
+  }
+
+  document.getElementById("subjectMsg").innerText =
+    "Subject Added ✅"
+
+  document.getElementById("subjectName").value = ""
+
+  loadSubjects()
+}
+
+/* =========================================
+   ADD TOPIC
+========================================= */
+
+async function addTopic(subjectId){
+
+  const user = await getUser()
+
+  const input =
+    document.getElementById(`topic-${subjectId}`)
+
+  const title = input.value
+
+  if(!title) return
+
+  const { error } =
+    await supabaseClient
+      .from("topics")
+      .insert([{
+        user_id:user.id,
+        subject_id:subjectId,
+        title
+      }])
+
+  if(error){
+
+    alert(error.message)
+
+    return
+  }
+
+  input.value = ""
+
+  loadSubjects()
+}
+
+/* =========================================
+   TOGGLE TOPIC
+========================================= */
+
+async function toggleTopic(id, completed){
+
+  await supabaseClient
+    .from("topics")
+    .update({
+      completed: !completed
+    })
+    .eq("id", id)
+
+  loadSubjects()
+}
+
+/* =========================================
+   LOAD SUBJECTS + TOPICS
+========================================= */
+
+async function loadSubjects(){
+
+  const user = await getUser()
+
+  const { data: subjects } =
+    await supabaseClient
+      .from("subjects")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", {
+        ascending:false
+      })
+
+  const container =
+    document.getElementById("subjectsContainer")
+
+  if(!subjects || subjects.length === 0){
+
+    container.innerHTML =
+      "<p>No subjects yet</p>"
+
+    return
+  }
 
   let html = ""
 
-  users?.forEach(u => {
+  for(const subject of subjects){
 
-    const p = progress?.find(x => x.user_id === u.id)
+    const { data: topics } =
+      await supabaseClient
+        .from("topics")
+        .select("*")
+        .eq("subject_id", subject.id)
+        .order("created_at", {
+          ascending:true
+        })
+
+    /* PROGRESS */
+
+    const totalTopics = topics.length
+
+    const completedTopics =
+      topics.filter(t => t.completed).length
+
+    const percent =
+      totalTopics > 0
+      ? Math.round(
+          (completedTopics / totalTopics) * 100
+        )
+      : 0
 
     html += `
-      <div class="card">
-        <h3>${u.name}</h3>
 
-        <p>Linux</p>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width:${p?.linux || 0}%"></div>
+      <div class="card subject-card">
+
+        <h2>
+          📘 ${subject.name}
+        </h2>
+
+        <p>
+          Progress: ${percent}%
+        </p>
+
+        <div class="topics-list">
+
+          ${
+            topics.length > 0
+
+            ?
+
+            topics.map(topic => `
+
+              <div class="topic-item">
+
+                <label>
+
+                  <input
+                    type="checkbox"
+
+                    ${
+                      topic.completed
+                      ? "checked"
+                      : ""
+                    }
+
+                    onchange="
+                      toggleTopic(
+                        '${topic.id}',
+                        ${topic.completed}
+                      )
+                    "
+                  >
+
+                  ${topic.title}
+
+                </label>
+
+              </div>
+
+            `).join("")
+
+            :
+
+            "<p>No topics yet</p>"
+          }
+
         </div>
 
-        <p>Docker</p>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width:${p?.docker || 0}%"></div>
-        </div>
+        <div class="topic-add">
 
-        <p>Kubernetes</p>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width:${p?.kubernetes || 0}%"></div>
+          <input
+            id="topic-${subject.id}"
+            placeholder="Add topic">
+
+          <button
+            class="nav-btn"
+            onclick="addTopic('${subject.id}')">
+
+            Add
+
+          </button>
+
         </div>
 
       </div>
     `
-  })
+  }
 
-  document.getElementById("content").innerHTML = html
+  container.innerHTML = html
 }
 
-load()
+loadSubjects()
 
 </script>
 

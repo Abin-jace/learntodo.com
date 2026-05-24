@@ -13,6 +13,7 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="supabase.js"></script>
 
 </head>
@@ -23,15 +24,18 @@
 <div class="sidebar">
 
   <button class="nav-btn" onclick="go('home.html')">
-    <i class="fa-solid fa-house"></i> Home
+    <i class="fa-solid fa-house"></i>
+    Home
   </button>
 
   <button class="nav-btn" onclick="go('index.html')">
-    <i class="fa-solid fa-chart-line"></i> Dashboard
+    <i class="fa-solid fa-chart-line"></i>
+    Dashboard
   </button>
 
   <button class="nav-btn" onclick="go('notes.html')">
-    <i class="fa-solid fa-note-sticky"></i> Notes
+    <i class="fa-solid fa-note-sticky"></i>
+    Notes
   </button>
 
 </div>
@@ -119,12 +123,14 @@
   <!-- RIGHT -->
   <div class="home-right">
 
-    <!-- NOTE -->
+    <!-- QUICK NOTE -->
     <div class="card home-tile">
 
       <h3>📝 Quick Note</h3>
 
-      <input id="noteTitle" placeholder="Title">
+      <input
+        id="noteTitle"
+        placeholder="Title">
 
       <textarea
         id="noteContent"
@@ -141,15 +147,20 @@
     <!-- PROGRESS -->
     <div class="card home-tile">
 
-      <h3>📈 Progress</h3>
+      <h3>📈 Overall Progress</h3>
 
       <div class="dial-wrapper">
 
         <svg class="dial" viewBox="0 0 100 100">
 
-          <circle class="bg" cx="50" cy="50" r="40"></circle>
+          <circle
+            class="bg"
+            cx="50"
+            cy="50"
+            r="40"></circle>
 
-          <circle class="progress"
+          <circle
+            class="progress"
             cx="50"
             cy="50"
             r="40"></circle>
@@ -162,7 +173,9 @@
 
       </div>
 
-      <p>Overall Learning</p>
+      <p>
+        Auto calculated from completed topics
+      </p>
 
     </div>
 
@@ -222,7 +235,9 @@ async function setUser(){
   const user = data?.user
 
   if(!user){
+
     window.location.href = "login.html"
+
     return
   }
 
@@ -239,7 +254,7 @@ async function setUser(){
 setUser()
 
 /* =========================================
-   SAVE NOTE + CREATE NOTIFICATION
+   SAVE NOTE
 ========================================= */
 
 async function saveNote(){
@@ -268,7 +283,7 @@ async function saveNote(){
     await supabaseClient
       .from("notes")
       .insert([{
-        user_id: user.id,
+        user_id:user.id,
         title,
         content
       }])
@@ -281,7 +296,7 @@ async function saveNote(){
     return
   }
 
-  /* ADD NOTIFICATION */
+  /* CREATE NOTIFICATION */
   await supabaseClient
     .from("notifications")
     .insert([{
@@ -293,33 +308,77 @@ async function saveNote(){
     "Saved ✅"
 
   document.getElementById("noteTitle").value = ""
+
   document.getElementById("noteContent").value = ""
 }
 
 /* =========================================
-   DIAL
+   LOAD DIAL
 ========================================= */
 
 async function loadDial(){
 
-  const { data: userData } =
+  const { data } =
     await supabaseClient.auth.getUser()
 
-  const user = userData?.user
+  const user = data?.user
 
-  const { data } =
+  if(!user) return
+
+  /* GET SUBJECTS */
+  const { data: subjects } =
     await supabaseClient
-      .from("progress")
+      .from("subjects")
       .select("*")
       .eq("user_id", user.id)
-      .single()
 
-  const total =
-    ((data?.linux || 0) +
-     (data?.docker || 0) +
-     (data?.kubernetes || 0)) / 3
+  if(!subjects || subjects.length === 0){
 
-  const percent = Math.round(total)
+    updateDial(0)
+
+    return
+  }
+
+  let overall = 0
+
+  for(const subject of subjects){
+
+    /* GET TOPICS */
+    const { data: topics } =
+      await supabaseClient
+        .from("topics")
+        .select("*")
+        .eq("subject_id", subject.id)
+
+    const total =
+      topics.length
+
+    const completed =
+      topics.filter(
+        t => t.completed
+      ).length
+
+    const percent =
+      total > 0
+      ? (completed / total) * 100
+      : 0
+
+    overall += percent
+  }
+
+  const finalPercent =
+    Math.round(
+      overall / subjects.length
+    )
+
+  updateDial(finalPercent)
+}
+
+/* =========================================
+   UPDATE DIAL
+========================================= */
+
+function updateDial(percent){
 
   document.getElementById("dialPercent").innerText =
     percent + "%"
@@ -342,6 +401,8 @@ async function loadDial(){
 
 loadDial()
 
+setInterval(loadDial, 3000)
+
 /* =========================================
    NOTIFICATIONS
 ========================================= */
@@ -356,14 +417,16 @@ function toggleNotif(){
   dropdown.classList.toggle("show-dropdown")
 }
 
-/* LOAD EXISTING */
+/* LOAD NOTIFICATIONS */
 async function loadNotifications(){
 
   const { data } =
     await supabaseClient
       .from("notifications")
       .select("*")
-      .order("created_at", { ascending:false })
+      .order("created_at", {
+        ascending:false
+      })
       .limit(10)
 
   renderNotifications(data)
@@ -377,16 +440,21 @@ function renderNotifications(data){
 
   if(!data || data.length === 0){
 
-    list.innerHTML = "No notifications"
+    list.innerHTML =
+      "No notifications"
 
     return
   }
 
   list.innerHTML =
     data.map(n => `
+
       <div class="notif-item">
+
         🔔 ${n.message}
+
       </div>
+
     `).join("")
 }
 
