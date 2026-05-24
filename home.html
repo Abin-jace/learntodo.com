@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Home</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+</head>
+
+<body>
+
+<div class="sidebar">
+
+  <button class="nav-btn" onclick="go('home.html')">
+    <i class="fa-solid fa-house"></i> Home
+  </button>
+
+  <button class="nav-btn" onclick="go('index.html')">
+    <i class="fa-solid fa-chart-line"></i> Dashboard
+  </button>
+
+  <button class="nav-btn" onclick="go('notes.html')">
+    <i class="fa-solid fa-note-sticky"></i> Notes
+  </button>
+
+</div>
+
+<div class="main">
+
+  <h1 id="greet">Hey 👋</h1>
+
+  <h2 id="clock"></h2>
+
+  <div class="card">
+    <h3>Progress Overview</h3>
+    <div id="progress"></div>
+  </div>
+
+</div>
+
+<script>
+
+function go(p){ window.location.href = p }
+
+/* CLOCK */
+setInterval(() => {
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString()
+}, 1000)
+
+/* USER NAME */
+async function setUser(){
+  const { data } = await supabaseClient.auth.getUser()
+  const user = data?.user
+  const name = user?.email?.split("@")[0] || "User"
+  document.getElementById("greet").innerText = `Hey ${name} 👋`
+}
+
+/* PROGRESS */
+async function loadProgress(){
+
+  const { data: userData } = await supabaseClient.auth.getUser()
+  const user = userData?.user
+
+  const { data } = await supabaseClient
+    .from("progress")
+    .select("*")
+    .eq("user_id", user.id)
+    .single()
+
+  document.getElementById("progress").innerHTML = `
+    <p>Linux: ${data?.linux || 0}%</p>
+    <p>Docker: ${data?.docker || 0}%</p>
+    <p>Kubernetes: ${data?.kubernetes || 0}%</p>
+  `
+}
+
+setUser()
+loadProgress()
+
+</script>
+
+</body>
+</html>

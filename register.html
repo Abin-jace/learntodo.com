@@ -1,70 +1,38 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Register</title>
 
+  <link rel="stylesheet" href="style.css">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
-
-  <style>
-    body{background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;}
-    .box{background:#1e293b;padding:40px;border-radius:20px;width:350px}
-    input,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
-    input{background:#334155;color:white}
-    button{background:#38bdf8;font-weight:bold;cursor:pointer}
-  </style>
 </head>
 
 <body>
 
-<div class="box">
+<div class="main">
+
   <h2>Register</h2>
 
-  <input id="name" placeholder="Name">
   <input id="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
 
-  <button onclick="register()">Create Account</button>
+  <button onclick="register()">Register</button>
+
 </div>
 
 <script>
 
 async function register(){
 
-  const name = document.getElementById("name").value
-  const email = document.getElementById("email").value
-  const password = document.getElementById("password").value
-
-  const { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password
+  const { error } = await supabaseClient.auth.signUp({
+    email: email.value,
+    password: password.value
   })
 
-  if(error){
-    alert(error.message)
-    return
-  }
-
-  const user = data.user
-
-  await supabaseClient.from("profiles").insert([
-    {
-      id: user.id,
-      name: name
-    }
-  ])
-
-  await supabaseClient.from("progress").insert([
-    {
-      user_id: user.id,
-      linux: 0,
-      docker: 0,
-      kubernetes: 0
-    }
-  ])
-
-  alert("Registered!")
-  window.location.href = "index.html"
+  if(!error) window.location.href = "login.html"
 }
 
 </script>

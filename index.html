@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Notes</title>
+  <title>Dashboard</title>
 
   <link rel="stylesheet" href="style.css">
 
@@ -33,14 +33,9 @@
 
 <div class="main">
 
-  <h2>Shared Notes</h2>
+  <h2>Team Progress</h2>
 
-  <input id="title" placeholder="Title">
-  <input id="content" placeholder="Content">
-
-  <button onclick="save()">Save</button>
-
-  <div id="notes"></div>
+  <div id="content">Loading...</div>
 
 </div>
 
@@ -48,32 +43,41 @@
 
 function go(p){ window.location.href = p }
 
-async function save(){
-
-  await supabaseClient.from("notes").insert([{
-    title: document.getElementById("title").value,
-    content: document.getElementById("content").value
-  }])
-
-  load()
-}
-
 async function load(){
 
-  const { data } = await supabaseClient.from("notes").select("*")
+  const { data: users } = await supabaseClient.from("profiles").select("*")
+  const { data: progress } = await supabaseClient.from("progress").select("*")
 
   let html = ""
 
-  data?.forEach(n => {
+  users?.forEach(u => {
+
+    const p = progress?.find(x => x.user_id === u.id)
+
     html += `
       <div class="card">
-        <h3>${n.title}</h3>
-        <p>${n.content}</p>
+        <h3>${u.name}</h3>
+
+        <p>Linux</p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${p?.linux || 0}%"></div>
+        </div>
+
+        <p>Docker</p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${p?.docker || 0}%"></div>
+        </div>
+
+        <p>Kubernetes</p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${p?.kubernetes || 0}%"></div>
+        </div>
+
       </div>
     `
   })
 
-  document.getElementById("notes").innerHTML = html
+  document.getElementById("content").innerHTML = html
 }
 
 load()
