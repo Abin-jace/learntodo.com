@@ -315,6 +315,47 @@ loadUser()
 
 loadSquadProgress()
 
+/* =========================================
+   LOAD USER NAME FROM AUTH
+========================================= */
+
+async function loadProfile(){
+
+  try {
+
+    const {
+
+      data:{ user }
+
+    } = await supabaseClient.auth.getUser()
+
+    if(!user){
+
+      window.location.replace("login.html")
+
+      return
+    }
+
+    console.log("AUTH USER:", user)
+
+    /* NAME OPTIONS */
+    const name =
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "User"
+
+    document.getElementById(
+      "userName"
+    ).innerText = " " + name
+
+  } catch(err){
+
+    console.error(err)
+  }
+}
+
+loadProfile()
+
 </script>
 
 </body>

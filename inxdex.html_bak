@@ -28,7 +28,7 @@
     Home
   </button>
 
-  <button class="nav-btn" onclick="go('index.html')">
+  <button class="nav-btn active-nav" onclick="go('index.html')">
     <i class="fa-solid fa-chart-line"></i>
     Dashboard
   </button>
@@ -43,11 +43,15 @@
 <!-- MAIN -->
 <div class="main">
 
-  <h1>📚 DevOps Roadmap</h1>
+  <h1 class="page-title">
+    📚 DevOps Roadmap
+  </h1>
 
   <div
     id="subjectsContainer"
     class="subjects-grid">
+
+    <p>Loading roadmap...</p>
 
   </div>
 
@@ -60,6 +64,7 @@
 ========================================= */
 
 function go(page){
+
   window.location.href = page
 }
 
@@ -100,223 +105,331 @@ function toggleTopic(id){
 }
 
 /* =========================================
-   TOGGLE SUBTOPIC
+   TOGGLE SUBTOPIC (FIXED)
 ========================================= */
 
 async function toggleSubtopic(subtopicId){
 
-  const user = await getUser()
+  try {
 
-  const { data: existing } =
-    await supabaseClient
-      .from("subtopic_progress")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("subtopic_id", subtopicId)
-      .maybeSingle()
+    const user = await getUser()
 
-  if(existing){
+    if(!user) return
 
-    await supabaseClient
-      .from("subtopic_progress")
-      .delete()
-      .eq("id", existing.id)
+    /* CHECK EXISTING */
 
-  } else {
+    const { data: existing } =
+      await supabaseClient
+        .from("subtopic_progress")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("subtopic_id", subtopicId)
+        .maybeSingle()
 
-    await supabaseClient
-      .from("subtopic_progress")
-      .insert([{
-        user_id:user.id,
-        subtopic_id:subtopicId,
-        completed:true
-      }])
+    /* TOGGLE LOGIC */
+
+    if(existing){
+
+      await supabaseClient
+        .from("subtopic_progress")
+        .delete()
+        .eq("id", existing.id)
+
+    } else {
+
+      await supabaseClient
+        .from("subtopic_progress")
+        .insert([{
+
+          user_id: user.id,
+          subtopic_id: subtopicId,
+          completed: true
+
+        }])
+    }
+
+    /* SMALL DELAY BEFORE REFRESH */
+    setTimeout(() => {
+
+      loadSubjects()
+
+    }, 150)
+
+  } catch(err){
+
+    console.error(err)
   }
-
-  loadSubjects()
 }
 
 /* =========================================
-   LOAD SUBJECTS
+   LOAD SUBJECTS - OPTIMIZED
 ========================================= */
 
 async function loadSubjects(){
 
   const user = await getUser()
 
-  const { data: subjects } =
-    await supabaseClient
-      .from("subjects")
-      .select("*")
-      .order("created_at", {
-        ascending:true
-      })
-
   const container =
     document.getElementById("subjectsContainer")
 
-  let html = ""
+  container.innerHTML = `
+    <p>Loading roadmap...</p>
+  `
 
-  for(const subject of subjects){
+  try {
 
-    /* WEEKS */
-    const { data: weeks } =
-      await supabaseClient
+    /* FETCH EVERYTHING IN PARALLEL */
+
+    const [
+
+      subjectsRes,
+      weeksRes,
+      topicsRes,
+      subtopicsRes,
+      progressRes
+
+    ] = await Promise.all([
+
+      supabaseClient
+        .from("subjects")
+        .select("*")
+        .order("created_at", {
+          ascending:true
+        }),
+
+      supabaseClient
         .from("weeks")
         .select("*")
-        .eq("subject_id", subject.id)
         .order("week_number", {
           ascending:true
-        })
+        }),
 
-    /* SUBJECT SUBTOPICS */
-    const { data: topicData } =
-      await supabaseClient
+      supabaseClient
         .from("topics")
-        .select(`
-          *,
-          subtopics(*)
-        `)
-        .eq("subject_id", subject.id)
+        .select("*"),
 
-    const allSubtopics =
-      topicData.flatMap(
-        t => t.subtopics || []
-      )
+      supabaseClient
+        .from("subtopics")
+        .select("*"),
 
-    /* USER PROGRESS */
-    const { data: progress } =
-      await supabaseClient
+      supabaseClient
         .from("subtopic_progress")
         .select("*")
         .eq("user_id", user.id)
+
+    ])
+
+    const subjects =
+      subjectsRes.data || []
+
+    const weeks =
+      weeksRes.data || []
+
+    const topics =
+      topicsRes.data || []
+
+    const subtopics =
+      subtopicsRes.data || []
+
+    const progress =
+      progressRes.data || []
+
+    /* USER COMPLETED IDS */
 
     const completedIds =
       progress.map(
         p => p.subtopic_id
       )
 
-    const totalSubtopics =
-      allSubtopics.length
+    let html = ""
 
-    const completedSubtopics =
-      allSubtopics.filter(
-        s => completedIds.includes(s.id)
-      ).length
+    /* SUBJECT LOOP */
 
-    const percent =
-      totalSubtopics > 0
-      ? Math.round(
-          (completedSubtopics / totalSubtopics) * 100
+    for(const subject of subjects){
+
+      const subjectWeeks =
+        weeks.filter(
+          w => w.subject_id === subject.id
         )
-      : 0
 
-    html += `
+      const weekIds =
+        subjectWeeks.map(
+          w => w.id
+        )
 
-      <div class="card subject-card">
+      const subjectTopics =
+        topics.filter(
+          t => weekIds.includes(t.week_id)
+        )
 
-        <h2>
-          📘 ${subject.name}
-        </h2>
+      const topicIds =
+        subjectTopics.map(
+          t => t.id
+        )
 
-        <p>
-          Progress: ${percent}%
-        </p>
+      const subjectSubtopics =
+        subtopics.filter(
+          s => topicIds.includes(s.topic_id)
+        )
 
-    `
+      /* SUBJECT PROGRESS */
 
-    /* WEEKS */
-    for(const week of weeks){
+      const totalSubtopics =
+        subjectSubtopics.length
 
-      const { data: topics } =
-        await supabaseClient
-          .from("topics")
-          .select("*")
-          .eq("week_id", week.id)
+      const completedSubtopics =
+        subjectSubtopics.filter(
+          s => completedIds.includes(s.id)
+        ).length
+
+      const percent =
+        totalSubtopics > 0
+        ? Math.round(
+            (completedSubtopics / totalSubtopics) * 100
+          )
+        : 0
 
       html += `
 
-        <div class="week-card">
+        <div class="card subject-card">
 
-          <div
-            class="week-header"
-            onclick="toggleWeek('week-${week.id}')">
+          <div class="subject-top">
 
-            <span>
-              ▶ Week ${week.week_number}
-            </span>
+            <h2>
+              📘 ${subject.name}
+            </h2>
 
-            <span>
-              ${week.title}
+            <span class="subject-progress">
+              ${percent}%
             </span>
 
           </div>
 
-          <div
-            id="week-${week.id}"
-            class="week-content">
-
       `
 
-      /* TOPICS */
-      for(const topic of topics){
+      /* WEEK LOOP */
 
-        const { data: subtopics } =
-          await supabaseClient
-            .from("subtopics")
-            .select("*")
-            .eq("topic_id", topic.id)
+      for(const week of subjectWeeks){
+
+        const weekTopics =
+          subjectTopics.filter(
+            t => t.week_id === week.id
+          )
 
         html += `
 
-          <div class="topic-card">
+          <div class="week-card">
 
             <div
-              class="topic-header"
-              onclick="toggleTopic('topic-${topic.id}')">
+              class="week-header"
+              onclick="toggleWeek('week-${week.id}')">
 
-              ▶ ${topic.title}
+              <span>
+                ▶ Week ${week.week_number}
+              </span>
+
+              <span>
+                ${week.title}
+              </span>
 
             </div>
 
             <div
-              id="topic-${topic.id}"
-              class="topic-content">
+              id="week-${week.id}"
+              class="week-content">
 
         `
 
-        /* SUBTOPICS */
-        for(const sub of subtopics){
+        /* TOPIC LOOP */
 
-          const checked =
-            completedIds.includes(sub.id)
+        for(const topic of weekTopics){
+
+          const topicSubtopics =
+            subjectSubtopics.filter(
+              s => s.topic_id === topic.id
+            )
+
+          const topicCompleted =
+            topicSubtopics.filter(
+              s => completedIds.includes(s.id)
+            ).length
+
+          const topicPercent =
+            topicSubtopics.length > 0
+            ? Math.round(
+                (topicCompleted / topicSubtopics.length) * 100
+              )
+            : 0
 
           html += `
 
-            <div class="subtopic-item">
+            <div class="topic-card">
 
-              <label>
+              <div
+                class="topic-header"
+                onclick="toggleTopic('topic-${topic.id}')">
 
-                <input
-                  type="checkbox"
+                <div class="topic-title">
 
-                  ${
-                    checked
-                    ? "checked"
-                    : ""
-                  }
+                  <span>
+                    ▶ ${topic.title}
+                  </span>
 
-                  onchange="
-                    toggleSubtopic(
-                      '${sub.id}'
-                    )
-                  "
-                >
+                  <span class="topic-progress">
+                    ${topicPercent}%
+                  </span>
 
-                ${sub.title}
+                </div>
 
-              </label>
+              </div>
 
+              <div
+                id="topic-${topic.id}"
+                class="topic-content">
+
+          `
+
+          /* SUBTOPICS LOOP */
+
+          for(const sub of topicSubtopics){
+
+            const checked =
+              completedIds.includes(sub.id)
+
+            html += `
+
+              <div class="subtopic-item">
+
+                <label class="checkbox-label">
+
+                  <input
+                    type="checkbox"
+
+                    ${
+                      checked
+                      ? "checked"
+                      : ""
+                    }
+
+                    onchange="
+                      toggleSubtopic(
+                        '${sub.id}'
+                      )
+                    "
+                  >
+
+                  <span>
+                    ${sub.title}
+                  </span>
+
+                </label>
+
+              </div>
+            `
+          }
+
+          html += `
+              </div>
             </div>
           `
         }
@@ -328,18 +441,25 @@ async function loadSubjects(){
       }
 
       html += `
-          </div>
         </div>
       `
     }
 
-    html += `
-      </div>
+    container.innerHTML = html
+
+  } catch(err){
+
+    console.error(err)
+
+    container.innerHTML = `
+      <p>Error loading roadmap</p>
     `
   }
-
-  container.innerHTML = html
 }
+
+/* =========================================
+   INITIAL LOAD
+========================================= */
 
 loadSubjects()
 

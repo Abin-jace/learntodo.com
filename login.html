@@ -3,39 +3,344 @@
 
 <head>
 
-<meta charset="UTF-8">
+  <meta charset="UTF-8">
+
   <title>Login</title>
 
   <link rel="stylesheet" href="style.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="supabase.js"></script>
+
 </head>
 
-<body>
+<body class="login-body">
 
-<div class="main">
+<div class="login-container">
 
-  <h2>Login</h2>
+  <div class="login-card">
 
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
+    <h1 id="formTitle">
+      Welcome Back 👋
+    </h1>
 
-  <button onclick="login()">Login</button>
+    <!-- NAME -->
+    <input
+      type="text"
+      id="name"
+      placeholder="Your Name"
+      style="display:none">
+
+    <!-- EMAIL -->
+    <input
+      type="email"
+      id="email"
+      placeholder="Email">
+
+    <!-- PASSWORD -->
+    <input
+      type="password"
+      id="password"
+      placeholder="Password">
+
+    <!-- BUTTON -->
+    <button
+      id="authBtn"
+      onclick="handleAuth()">
+
+      Login
+
+    </button>
+
+    <!-- STATUS -->
+    <p id="statusText"></p>
+
+    <!-- TOGGLE -->
+    <p
+      class="toggle-auth"
+      onclick="toggleMode()">
+
+      Register?
+
+    </p>
+
+  </div>
 
 </div>
 
 <script>
 
-async function login(){
+/* =========================================
+   MODE
+========================================= */
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  })
+let isLogin = true
 
-  if(!error) window.location.href = "home.html"
+/* =========================================
+   TOGGLE MODE
+========================================= */
+
+function toggleMode(){
+
+  isLogin = !isLogin
+
+  const title =
+    document.getElementById("formTitle")
+
+  const button =
+    document.getElementById("authBtn")
+
+  const toggle =
+    document.querySelector(".toggle-auth")
+
+  const nameInput =
+    document.getElementById("name")
+
+  const status =
+    document.getElementById("statusText")
+
+  status.innerText = ""
+
+  if(isLogin){
+
+    title.innerText =
+      "Welcome Back 👋"
+
+    button.innerText =
+      "Login"
+
+    toggle.innerText =
+      "Register?"
+
+    nameInput.style.display =
+      "none"
+
+  } else {
+
+    title.innerText =
+      "Create Account 🚀"
+
+    button.innerText =
+      "Register"
+
+    toggle.innerText =
+      "Already have an account?"
+
+    nameInput.style.display =
+      "block"
+  }
 }
+
+/* =========================================
+   ENTER KEY SUPPORT
+========================================= */
+
+document.addEventListener("keydown",(e)=>{
+
+  if(e.key === "Enter"){
+
+    handleAuth()
+  }
+})
+
+/* =========================================
+   AUTH
+========================================= */
+
+async function handleAuth(){
+
+  const email =
+    document.getElementById("email")
+      .value
+      .trim()
+
+  const password =
+    document.getElementById("password")
+      .value
+      .trim()
+
+  const name =
+    document.getElementById("name")
+      .value
+      .trim()
+
+  const status =
+    document.getElementById("statusText")
+
+  const button =
+    document.getElementById("authBtn")
+
+  if(!email || !password){
+
+    status.innerText =
+      "Enter email and password"
+
+    return
+  }
+
+  button.disabled = true
+
+  button.innerText = "Please wait..."
+
+  document.body.style.cursor = "wait"
+
+  status.innerText = ""
+
+  try {
+
+    /* =====================================
+       LOGIN
+    ===================================== */
+
+    if(isLogin){
+
+      const {
+
+        data,
+        error
+
+      } = await supabaseClient.auth
+        .signInWithPassword({
+
+          email,
+          password
+
+        })
+
+      if(error){
+
+        status.innerText =
+          error.message
+
+        button.disabled = false
+
+        button.innerText = "Login"
+
+        document.body.style.cursor =
+          "default"
+
+        return
+      }
+
+      document.body.style.cursor =
+        "default"
+
+      window.location.replace(
+        "home.html"
+      )
+
+      return
+    }
+
+    /* =====================================
+       REGISTER
+    ===================================== */
+
+    const {
+
+      data,
+      error
+
+        } = await supabaseClient.auth.signUp({
+
+  email,
+  password,
+
+  options: {
+
+    data: {
+
+      name: name   // 👈 IMPORTANT
+
+    }
+
+  }
+
+})
+    if(error){
+
+      status.innerText =
+        error.message
+
+      button.disabled = false
+
+      button.innerText = "Register"
+
+      document.body.style.cursor =
+        "default"
+
+      return
+    }
+
+    /* CREATE PROFILE */
+
+    if(data?.user){
+
+      const { data:existingProfile } =
+        await supabaseClient
+          .from("profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .maybeSingle()
+
+      if(!existingProfile){
+
+        await supabaseClient
+          .from("profiles")
+          .insert([{
+
+            id:data.user.id,
+
+            name:name || "User"
+
+          }])
+      }
+    }
+
+    status.innerText =
+      "Account created. Please login."
+
+    /* RESET TO LOGIN */
+
+    isLogin = true
+
+    toggleMode()
+
+    document.getElementById("password")
+      .value = ""
+
+  } catch(err){
+
+    console.error(err)
+
+    status.innerText =
+      "Unexpected Error"
+  }
+
+  button.disabled = false
+
+  button.innerText =
+    isLogin ? "Login" : "Register"
+
+  document.body.style.cursor =
+    "default"
+}
+
+/* =========================================
+   FAST SESSION CHECK
+========================================= */
+
+supabaseClient.auth.getSession()
+  .then(({ data })=>{
+
+    if(data?.session){
+
+      window.location.replace(
+        "home.html"
+      )
+    }
+  })
 
 </script>
 

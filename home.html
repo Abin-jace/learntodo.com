@@ -20,6 +20,20 @@
 
 <body>
 
+<!-- ======================================
+     PAGE LOADER
+====================================== -->
+
+<div id="pageLoader">
+
+  <div class="loader-spinner"></div>
+
+  <p>
+    Loading Workspace...
+  </p>
+
+</div>
+
 <!-- SIDEBAR -->
 <div class="sidebar">
 
@@ -38,35 +52,44 @@
     Notes
   </button>
 
+<button
+  class="nav-btn"
+  onclick="logout()">
+
+  <i class="fa-solid fa-right-from-bracket"></i>
+
+  Log Out
+
+</button>
+
+
 </div>
 
 <!-- MAIN -->
 <div class="main">
 
   <!-- TOP -->
-  <div class="home-top">
 
-    <div class="glass-card welcome-card">
+<div class="home-top">
 
-      <h1 id="welcomeText">
-        Hey 👋
-      </h1>
+  <div class="glass-card welcome-card">
 
-      <p>
-        Focus on your learning today 🚀
-      </p>
+    <h1 id="welcomeText">
 
-    </div>
+      Hey 👋
 
-    <button
-      class="logout-btn"
-      onclick="logout()">
+      <span id="userName"></span>
 
-      Logout
+    </h1>
 
-    </button>
+    <p>
+      Focus on your learning today 🚀
+    </p>
 
   </div>
+
+</div>
+
 
   <!-- GRID -->
   <div class="home-grid">
@@ -223,123 +246,312 @@ async function loadUser(){
 }
 
 /* =========================================
-   LOAD TEAM PROGRESS - OPTIMIZED
+   LOAD SQUAD PROGRESS
 ========================================= */
 
 async function loadSquadProgress(){
 
-  const squadContainer =
-    document.getElementById("squadContainer")
+  const container =
+    document.getElementById(
+      "squadProgressContainer"
+    )
+
+  if(!container) return
 
   try {
 
-    const [
+    /* =====================================
+       GET ALL USERS
+    ===================================== */
 
-      profilesRes,
-      subtopicsRes,
-      progressRes
+    const {
 
-    ] = await Promise.all([
+      data:profiles,
+      error:profileError
 
-      supabaseClient
-        .from("profiles")
-        .select("id,name"),
+    } = await supabaseClient
+      .from("profiles")
+      .select("*")
 
-      supabaseClient
-        .from("subtopics")
-        .select("id"),
+    if(profileError){
 
-      supabaseClient
-        .from("subtopic_progress")
-        .select("user_id")
+      console.error(profileError)
 
-    ])
+      container.innerHTML =
+        "Failed to load users"
 
-    const profiles =
-      profilesRes.data || []
-
-    const totalSubtopics =
-      subtopicsRes.data?.length || 0
-
-    const progress =
-      progressRes.data || []
-
-    /* USER COMPLETION MAP */
-
-    const userMap = {}
-
-    for(const row of progress){
-
-      if(!userMap[row.user_id]){
-
-        userMap[row.user_id] = 0
-      }
-
-      userMap[row.user_id]++
+      return
     }
 
-    /* BUILD HTML */
+    /* =====================================
+       GET ALL TOPIC PROGRESS
+    ===================================== */
+
+    const {
+
+      data:progressRows,
+      error:progressError
+
+    } = await supabaseClient
+      .from("topic_progress")
+      .select("*")
+
+    if(progressError){
+
+      console.error(progressError)
+
+      container.innerHTML =
+        "Failed to load progress"
+
+      return
+    }
+
+    /* =====================================
+       GET TOTAL TOPICS
+    ===================================== */
+
+    const {
+
+      data:topics,
+      error:topicError
+
+    } = await supabaseClient
+      .from("topics")
+      .select("id")
+
+    if(topicError){
+
+      console.error(topicError)
+
+      container.innerHTML =
+        "Failed to load topics"
+
+      return
+    }
+
+    const totalTopics =
+      topics?.length || 1
+
+    /* =====================================
+       BUILD HTML
+    ===================================== */
 
     let html = ""
 
     for(const profile of profiles){
 
-      const completed =
-        userMap[profile.id] || 0
+      const userProgress =
+        progressRows.filter(
+          row => row.user_id === profile.id
+        )
 
-      const percent =
-        totalSubtopics > 0
-        ? Math.round(
-            (completed / totalSubtopics) * 100
-          )
-        : 0
+      const completedTopics =
+        userProgress.filter(
+          row => row.completed === true
+        ).length
+
+      const percentage =
+        Math.round(
+          (completedTopics / totalTopics)
+          * 100
+        )
 
       html += `
 
-        <div class="gauge-card">
+        <div class="squad-card">
 
-          <div
-            class="gauge"
+          <div class="squad-top">
 
-            style="
-              background:
-              conic-gradient(
-                #8b5cf6 ${percent * 3.6}deg,
-                rgba(255,255,255,0.08) 0deg
-              );
-            ">
+            <h3>
 
-            <div class="gauge-inner">
+              👤 ${profile.name || "User"}
 
-              <span>
-                ${percent}%
-              </span>
+            </h3>
+
+            <span>
+
+              ${percentage}%
+
+            </span>
+
+          </div>
+
+          <div class="progress-bar">
+
+            <div
+              class="progress-fill"
+              style="width:${percentage}%">
 
             </div>
 
           </div>
-
-          <p class="gauge-name">
-
-            ${profile.name}
-
-          </p>
 
         </div>
 
       `
     }
 
-    squadContainer.innerHTML = html
+    container.innerHTML = html
 
   } catch(err){
 
     console.error(err)
 
-    squadContainer.innerHTML =
-      "Error loading squad progress"
+    container.innerHTML =
+      "Unexpected Error"
   }
 }
+
+/* =========================================
+   LOAD SQUAD PROGRESS
+========================================= */
+
+async function loadSquadProgress(){
+
+  console.log("Loading squad progress...")
+
+  const container =
+    document.getElementById(
+      "squadProgressContainer"
+    )
+
+  if(!container){
+
+    console.log("Container missing")
+    return
+  }
+
+  try {
+
+    /* GET USERS */
+
+    const { data:profiles , error:profileError } =
+      await supabaseClient
+        .from("profiles")
+        .select("*")
+
+    console.log("Profiles:", profiles)
+
+    if(profileError){
+
+      console.error(profileError)
+
+      container.innerHTML =
+        "Failed loading users"
+
+      return
+    }
+
+    /* GET TOPICS */
+
+    const { data:topics , error:topicError } =
+      await supabaseClient
+        .from("topics")
+        .select("id")
+
+    console.log("Topics:", topics)
+
+    if(topicError){
+
+      console.error(topicError)
+
+      container.innerHTML =
+        "Failed loading topics"
+
+      return
+    }
+
+    /* GET PROGRESS */
+
+    const {
+
+      data:progressRows,
+      error:progressError
+
+    } = await supabaseClient
+      .from("topic_progress")
+      .select("*")
+
+    console.log("Progress:", progressRows)
+
+    if(progressError){
+
+      console.error(progressError)
+
+      container.innerHTML =
+        "Failed loading progress"
+
+      return
+    }
+
+    const totalTopics =
+      topics?.length || 1
+
+    let html = ""
+
+    for(const profile of profiles){
+
+      const userProgress =
+        progressRows.filter(
+          row => row.user_id === profile.id
+        )
+
+      const completed =
+        userProgress.filter(
+          row => row.completed === true
+        ).length
+
+      const percentage =
+        Math.round(
+          (completed / totalTopics) * 100
+        )
+
+      html += `
+
+        <div class="squad-card">
+
+          <div class="squad-top">
+
+            <h3>
+
+              👤 ${profile.name || "User"}
+
+            </h3>
+
+            <span>
+
+              ${percentage}%
+
+            </span>
+
+          </div>
+
+          <div class="progress-bar">
+
+            <div
+              class="progress-fill"
+              style="width:${percentage}%">
+
+            </div>
+
+          </div>
+
+        </div>
+
+      `
+    }
+
+    container.innerHTML = html
+
+  } catch(err){
+
+    console.error(err)
+
+    container.innerHTML =
+      "Unexpected error"
+  }
+}
+
 
 /* =========================================
    INITIAL LOAD
@@ -457,7 +669,157 @@ async function addQuickNote(){
   }
 }
 
+/* =========================================
+   SAFE PAGE LOADER
+========================================= */
+
+window.onload = ()=>{
+
+  const loader =
+    document.getElementById("pageLoader")
+
+  if(loader){
+
+    loader.style.opacity = "0"
+
+    setTimeout(()=>{
+
+      loader.style.display = "none"
+
+    },300)
+  }
+}
+
+/* =========================================
+   FALLBACK FORCE HIDE
+========================================= */
+
+setTimeout(()=>{
+
+  const loader =
+    document.getElementById("pageLoader")
+
+  if(loader){
+
+    loader.style.display = "none"
+    loader.style.opacity = "0"
+  }
+
+},3000)
+
+async function logout(){
+
+  await supabaseClient.auth.signOut()
+
+  window.location.replace(
+    "login.html"
+  )
+}
+
+
+/* =========================================
+   TOGGLE TOPIC
+========================================= */
+
+async function toggleTopic(
+  topicId,
+  checked
+){
+
+  try {
+
+    /* GET CURRENT USER */
+
+    const {
+
+      data:{ user }
+
+    } = await supabaseClient.auth.getUser()
+
+    if(!user){
+
+      console.log("No user")
+
+      return
+    }
+
+    /* CHECK EXISTING ENTRY */
+
+    const {
+
+      data:existing
+
+    } = await supabaseClient
+      .from("topic_progress")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("topic_id", topicId)
+      .maybeSingle()
+
+    /* UPDATE EXISTING */
+
+    if(existing){
+
+      await supabaseClient
+        .from("topic_progress")
+        .update({
+
+          completed: checked
+
+        })
+        .eq("id", existing.id)
+
+    } else {
+
+      /* CREATE NEW */
+
+      await supabaseClient
+        .from("topic_progress")
+        .insert([{
+
+          user_id: user.id,
+
+          topic_id: topicId,
+
+          completed: checked
+
+        }])
+    }
+
+    console.log("Saved")
+
+  } catch(err){
+
+    console.error(err)
+  }
+}
+
+/* =========================================
+   GET USER NAME FROM AUTH
+========================================= */
+
+async function loadProfile(){
+
+  const { data:{ user } } =
+    await supabaseClient.auth.getUser()
+
+  if(!user){
+    window.location.replace("login.html")
+    return
+  }
+
+  const name =
+    user.user_metadata?.name || "User"
+
+  document.getElementById("userName")
+    .innerText = " " + name
+}
+
+loadProfile()
+
 </script>
+
+
 
 </body>
 </html>

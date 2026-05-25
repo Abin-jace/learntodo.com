@@ -105,40 +105,84 @@ function toggleTopic(id){
 }
 
 /* =========================================
-   TOGGLE SUBTOPIC
+   TOGGLE SUBTOPIC (FINAL FIXED)
 ========================================= */
 
-async function toggleSubtopic(subtopicId){
+    async function toggleSubtopic(event, subtopicId, checked){
 
-  const user = await getUser()
+  try {
 
-  const { data: existing } =
-    await supabaseClient
-      .from("subtopic_progress")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("subtopic_id", subtopicId)
-      .maybeSingle()
+    /* STOP ANY DEFAULT BEHAVIOR */
+    if(event){
+      event.preventDefault()
+      event.stopPropagation()
+    }
 
-  if(existing){
+    const user = await getUser()
 
-    await supabaseClient
-      .from("subtopic_progress")
-      .delete()
-      .eq("id", existing.id)
+    if(!user){
 
-  } else {
+      console.error("No user found")
+      return
+    }
 
-    await supabaseClient
-      .from("subtopic_progress")
-      .insert([{
-        user_id:user.id,
-        subtopic_id:subtopicId,
-        completed:true
-      }])
+    console.log("USER ID:", user.id)
+
+    /* CHECK EXISTING ENTRY */
+
+    const { data: existing, error: fetchError } =
+      await supabaseClient
+        .from("subtopic_progress")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("subtopic_id", subtopicId)
+        .maybeSingle()
+
+    if(fetchError){
+      console.error("FETCH ERROR:", fetchError)
+    }
+
+    /* DELETE OR INSERT */
+
+    if(existing){
+
+      const { error: deleteError } =
+        await supabaseClient
+          .from("subtopic_progress")
+          .delete()
+          .eq("id", existing.id)
+
+      if(deleteError){
+        console.error("DELETE ERROR:", deleteError)
+      }
+
+    } else {
+
+      const { error: insertError } =
+        await supabaseClient
+          .from("subtopic_progress")
+          .insert([{
+
+            user_id: user.id,
+            subtopic_id: subtopicId,
+            completed: true
+
+          }])
+
+      if(insertError){
+        console.error("INSERT ERROR:", insertError)
+      }
+    }
+
+    /* DO NOT FULL RELOAD */
+
+    console.log("Toggle complete")
+    await loadSubjects()
+
+  } catch(err){
+
+    console.error("TOGGLE ERROR:", err)
   }
-
-  loadSubjects()
 }
 
 /* =========================================
@@ -382,21 +426,17 @@ async function loadSubjects(){
 
                 <label class="checkbox-label">
 
-                  <input
-                    type="checkbox"
+<input
+  type="checkbox"
 
-                    ${
-                      checked
-                      ? "checked"
-                      : ""
-                    }
-
-                    onchange="
-                      toggleSubtopic(
-                        '${sub.id}'
-                      )
-                    "
-                  >
+  onchange="
+    toggleSubtopic(
+      event,
+      '${sub.id}',
+      this.checked
+    )
+  "
+>
 
                   <span>
                     ${sub.title}
