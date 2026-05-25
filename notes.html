@@ -3,8 +3,9 @@
 
 <head>
 
-<meta charset="UTF-8">
-  <title>Notes</title>
+  <meta charset="UTF-8">
+
+  <title>Shared Notes</title>
 
   <link rel="stylesheet" href="style.css">
 
@@ -12,73 +13,187 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="supabase.js"></script>
+
 </head>
 
 <body>
 
+<!-- SIDEBAR -->
 <div class="sidebar">
 
   <button class="nav-btn" onclick="go('home.html')">
-    <i class="fa-solid fa-house"></i> Home
+    <i class="fa-solid fa-house"></i>
+    Home
   </button>
 
   <button class="nav-btn" onclick="go('index.html')">
-    <i class="fa-solid fa-chart-line"></i> Dashboard
+    <i class="fa-solid fa-chart-line"></i>
+    Dashboard
   </button>
 
-  <button class="nav-btn" onclick="go('notes.html')">
-    <i class="fa-solid fa-note-sticky"></i> Notes
+  <button class="nav-btn active-nav">
+    <i class="fa-solid fa-note-sticky"></i>
+    Notes
   </button>
 
 </div>
 
+<!-- MAIN -->
 <div class="main">
 
-  <h2>Shared Notes</h2>
+  <div class="glass-card">
 
-  <input id="title" placeholder="Title">
-  <input id="content" placeholder="Content">
+    <h1>
+      📝 Shared Notes
+    </h1>
 
-  <button onclick="save()">Save</button>
+    <div id="notesContainer">
 
-  <div id="notes"></div>
+      Loading notes...
+
+    </div>
+
+  </div>
 
 </div>
 
 <script>
 
-function go(p){ window.location.href = p }
+/* =========================================
+   NAVIGATION
+========================================= */
 
-async function save(){
+function go(page){
 
-  await supabaseClient.from("notes").insert([{
-    title: document.getElementById("title").value,
-    content: document.getElementById("content").value
-  }])
-
-  load()
+  window.location.href = page
 }
 
-async function load(){
+/* =========================================
+   LOAD NOTES
+========================================= */
 
-  const { data } = await supabaseClient.from("notes").select("*")
+async function loadNotes(){
 
-  let html = ""
+  const container =
+    document.getElementById("notesContainer")
 
-  data?.forEach(n => {
-    html += `
-      <div class="card">
-        <h3>${n.title}</h3>
-        <p>${n.content}</p>
-      </div>
-    `
-  })
+  try {
 
-  document.getElementById("notes").innerHTML = html
+    const { data: notes , error } =
+      await supabaseClient
+        .from("notes")
+        .select("*")
+        .order("created_at",{
+          ascending:false
+        })
+
+    if(error){
+
+      console.error(error)
+
+      container.innerHTML =
+        "Failed to load notes"
+
+      return
+    }
+
+    if(!notes || notes.length === 0){
+
+      container.innerHTML =
+        "No notes yet"
+
+      return
+    }
+
+    let html = ""
+
+    for(const note of notes){
+
+      html += `
+
+        <div class="note-item">
+
+          <div class="note-top">
+
+            <div class="note-user">
+
+              👤 ${note.user_name || "User"}
+
+            </div>
+
+            <button
+              class="delete-note-btn"
+              onclick="deleteNote('${note.id}')">
+
+              <i class="fa-solid fa-trash"></i>
+
+            </button>
+
+          </div>
+
+          <div class="note-content">
+
+            ${note.content}
+
+          </div>
+
+        </div>
+
+      `
+    }
+
+    container.innerHTML = html
+
+  } catch(err){
+
+    console.error(err)
+
+    container.innerHTML =
+      "Unexpected Error"
+  }
 }
 
-load()
+/* =========================================
+   DELETE NOTE
+========================================= */
+
+async function deleteNote(noteId){
+
+  try {
+
+    const confirmed =
+      confirm("Delete this note?")
+
+    if(!confirmed) return
+
+    const { error } =
+      await supabaseClient
+        .from("notes")
+        .delete()
+        .eq("id", noteId)
+
+    if(error){
+
+      console.error(error)
+
+      return
+    }
+
+    loadNotes()
+
+  } catch(err){
+
+    console.error(err)
+  }
+}
+
+/* =========================================
+   INITIAL LOAD
+========================================= */
+
+loadNotes()
 
 </script>
 

@@ -28,7 +28,7 @@
     Home
   </button>
 
-  <button class="nav-btn" onclick="go('index.html')">
+  <button class="nav-btn active-nav" onclick="go('index.html')">
     <i class="fa-solid fa-chart-line"></i>
     Dashboard
   </button>
@@ -43,27 +43,15 @@
 <!-- MAIN -->
 <div class="main">
 
-  <h1>📚 Study Dashboard</h1>
+  <h1 class="page-title">
+    📚 DevOps Roadmap
+  </h1>
 
-  <!-- ADD SUBJECT -->
-  <div class="card">
+  <div
+    id="subjectsContainer"
+    class="subjects-grid">
 
-    <h3>Add Subject</h3>
-
-    <input
-      id="subjectName"
-      placeholder="Example: Linux">
-
-    <button class="nav-btn" onclick="addSubject()">
-      Add Subject
-    </button>
-
-    <p id="subjectMsg"></p>
-
-  </div>
-
-  <!-- SUBJECTS -->
-  <div id="subjectsContainer" class="subjects-grid">
+    <p>Loading roadmap...</p>
 
   </div>
 
@@ -76,6 +64,7 @@
 ========================================= */
 
 function go(page){
+
   window.location.href = page
 }
 
@@ -92,234 +81,365 @@ async function getUser(){
 }
 
 /* =========================================
-   ADD SUBJECT
+   TOGGLE WEEK
 ========================================= */
 
-async function addSubject(){
+function toggleWeek(id){
 
-  const user = await getUser()
+  const element =
+    document.getElementById(id)
 
-  const name =
-    document.getElementById("subjectName").value
-
-  if(!name){
-
-    document.getElementById("subjectMsg").innerText =
-      "Enter subject name"
-
-    return
-  }
-
-  const { error } =
-    await supabaseClient
-      .from("subjects")
-      .insert([{
-        user_id:user.id,
-        name
-      }])
-
-  if(error){
-
-    document.getElementById("subjectMsg").innerText =
-      error.message
-
-    return
-  }
-
-  document.getElementById("subjectMsg").innerText =
-    "Subject Added ✅"
-
-  document.getElementById("subjectName").value = ""
-
-  loadSubjects()
-}
-
-/* =========================================
-   ADD TOPIC
-========================================= */
-
-async function addTopic(subjectId){
-
-  const user = await getUser()
-
-  const input =
-    document.getElementById(`topic-${subjectId}`)
-
-  const title = input.value
-
-  if(!title) return
-
-  const { error } =
-    await supabaseClient
-      .from("topics")
-      .insert([{
-        user_id:user.id,
-        subject_id:subjectId,
-        title
-      }])
-
-  if(error){
-
-    alert(error.message)
-
-    return
-  }
-
-  input.value = ""
-
-  loadSubjects()
+  element.classList.toggle("show-week")
 }
 
 /* =========================================
    TOGGLE TOPIC
 ========================================= */
 
-async function toggleTopic(id, completed){
+function toggleTopic(id){
 
-  await supabaseClient
-    .from("topics")
-    .update({
-      completed: !completed
-    })
-    .eq("id", id)
+  const element =
+    document.getElementById(id)
+
+  element.classList.toggle("show-topic")
+}
+
+/* =========================================
+   TOGGLE SUBTOPIC
+========================================= */
+
+async function toggleSubtopic(subtopicId){
+
+  const user = await getUser()
+
+  const { data: existing } =
+    await supabaseClient
+      .from("subtopic_progress")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("subtopic_id", subtopicId)
+      .maybeSingle()
+
+  if(existing){
+
+    await supabaseClient
+      .from("subtopic_progress")
+      .delete()
+      .eq("id", existing.id)
+
+  } else {
+
+    await supabaseClient
+      .from("subtopic_progress")
+      .insert([{
+        user_id:user.id,
+        subtopic_id:subtopicId,
+        completed:true
+      }])
+  }
 
   loadSubjects()
 }
 
 /* =========================================
-   LOAD SUBJECTS + TOPICS
+   LOAD SUBJECTS - OPTIMIZED
 ========================================= */
 
 async function loadSubjects(){
 
   const user = await getUser()
 
-  const { data: subjects } =
-    await supabaseClient
-      .from("subjects")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", {
-        ascending:false
-      })
-
   const container =
     document.getElementById("subjectsContainer")
 
-  if(!subjects || subjects.length === 0){
+  container.innerHTML = `
+    <p>Loading roadmap...</p>
+  `
 
-    container.innerHTML =
-      "<p>No subjects yet</p>"
+  try {
 
-    return
-  }
+    /* FETCH EVERYTHING IN PARALLEL */
 
-  let html = ""
+    const [
 
-  for(const subject of subjects){
+      subjectsRes,
+      weeksRes,
+      topicsRes,
+      subtopicsRes,
+      progressRes
 
-    const { data: topics } =
-      await supabaseClient
-        .from("topics")
+    ] = await Promise.all([
+
+      supabaseClient
+        .from("subjects")
         .select("*")
-        .eq("subject_id", subject.id)
         .order("created_at", {
           ascending:true
-        })
+        }),
 
-    /* PROGRESS */
+      supabaseClient
+        .from("weeks")
+        .select("*")
+        .order("week_number", {
+          ascending:true
+        }),
 
-    const totalTopics = topics.length
+      supabaseClient
+        .from("topics")
+        .select("*"),
 
-    const completedTopics =
-      topics.filter(t => t.completed).length
+      supabaseClient
+        .from("subtopics")
+        .select("*"),
 
-    const percent =
-      totalTopics > 0
-      ? Math.round(
-          (completedTopics / totalTopics) * 100
+      supabaseClient
+        .from("subtopic_progress")
+        .select("*")
+        .eq("user_id", user.id)
+
+    ])
+
+    const subjects =
+      subjectsRes.data || []
+
+    const weeks =
+      weeksRes.data || []
+
+    const topics =
+      topicsRes.data || []
+
+    const subtopics =
+      subtopicsRes.data || []
+
+    const progress =
+      progressRes.data || []
+
+    /* USER COMPLETED IDS */
+
+    const completedIds =
+      progress.map(
+        p => p.subtopic_id
+      )
+
+    let html = ""
+
+    /* SUBJECT LOOP */
+
+    for(const subject of subjects){
+
+      const subjectWeeks =
+        weeks.filter(
+          w => w.subject_id === subject.id
         )
-      : 0
 
-    html += `
+      const weekIds =
+        subjectWeeks.map(
+          w => w.id
+        )
 
-      <div class="card subject-card">
+      const subjectTopics =
+        topics.filter(
+          t => weekIds.includes(t.week_id)
+        )
 
-        <h2>
-          📘 ${subject.name}
-        </h2>
+      const topicIds =
+        subjectTopics.map(
+          t => t.id
+        )
 
-        <p>
-          Progress: ${percent}%
-        </p>
+      const subjectSubtopics =
+        subtopics.filter(
+          s => topicIds.includes(s.topic_id)
+        )
 
-        <div class="topics-list">
+      /* SUBJECT PROGRESS */
 
-          ${
-            topics.length > 0
+      const totalSubtopics =
+        subjectSubtopics.length
 
-            ?
+      const completedSubtopics =
+        subjectSubtopics.filter(
+          s => completedIds.includes(s.id)
+        ).length
 
-            topics.map(topic => `
+      const percent =
+        totalSubtopics > 0
+        ? Math.round(
+            (completedSubtopics / totalSubtopics) * 100
+          )
+        : 0
 
-              <div class="topic-item">
+      html += `
 
-                <label>
+        <div class="card subject-card">
+
+          <div class="subject-top">
+
+            <h2>
+              📘 ${subject.name}
+            </h2>
+
+            <span class="subject-progress">
+              ${percent}%
+            </span>
+
+          </div>
+
+      `
+
+      /* WEEK LOOP */
+
+      for(const week of subjectWeeks){
+
+        const weekTopics =
+          subjectTopics.filter(
+            t => t.week_id === week.id
+          )
+
+        html += `
+
+          <div class="week-card">
+
+            <div
+              class="week-header"
+              onclick="toggleWeek('week-${week.id}')">
+
+              <span>
+                ▶ Week ${week.week_number}
+              </span>
+
+              <span>
+                ${week.title}
+              </span>
+
+            </div>
+
+            <div
+              id="week-${week.id}"
+              class="week-content">
+
+        `
+
+        /* TOPIC LOOP */
+
+        for(const topic of weekTopics){
+
+          const topicSubtopics =
+            subjectSubtopics.filter(
+              s => s.topic_id === topic.id
+            )
+
+          const topicCompleted =
+            topicSubtopics.filter(
+              s => completedIds.includes(s.id)
+            ).length
+
+          const topicPercent =
+            topicSubtopics.length > 0
+            ? Math.round(
+                (topicCompleted / topicSubtopics.length) * 100
+              )
+            : 0
+
+          html += `
+
+            <div class="topic-card">
+
+              <div
+                class="topic-header"
+                onclick="toggleTopic('topic-${topic.id}')">
+
+                <div class="topic-title">
+
+                  <span>
+                    ▶ ${topic.title}
+                  </span>
+
+                  <span class="topic-progress">
+                    ${topicPercent}%
+                  </span>
+
+                </div>
+
+              </div>
+
+              <div
+                id="topic-${topic.id}"
+                class="topic-content">
+
+          `
+
+          /* SUBTOPICS LOOP */
+
+          for(const sub of topicSubtopics){
+
+            const checked =
+              completedIds.includes(sub.id)
+
+            html += `
+
+              <div class="subtopic-item">
+
+                <label class="checkbox-label">
 
                   <input
                     type="checkbox"
 
                     ${
-                      topic.completed
+                      checked
                       ? "checked"
                       : ""
                     }
 
                     onchange="
-                      toggleTopic(
-                        '${topic.id}',
-                        ${topic.completed}
+                      toggleSubtopic(
+                        '${sub.id}'
                       )
                     "
                   >
 
-                  ${topic.title}
+                  <span>
+                    ${sub.title}
+                  </span>
 
                 </label>
 
               </div>
-
-            `).join("")
-
-            :
-
-            "<p>No topics yet</p>"
+            `
           }
 
+          html += `
+              </div>
+            </div>
+          `
+        }
+
+        html += `
+            </div>
+          </div>
+        `
+      }
+
+      html += `
         </div>
+      `
+    }
 
-        <div class="topic-add">
+    container.innerHTML = html
 
-          <input
-            id="topic-${subject.id}"
-            placeholder="Add topic">
+  } catch(err){
 
-          <button
-            class="nav-btn"
-            onclick="addTopic('${subject.id}')">
+    console.error(err)
 
-            Add
-
-          </button>
-
-        </div>
-
-      </div>
+    container.innerHTML = `
+      <p>Error loading roadmap</p>
     `
   }
-
-  container.innerHTML = html
 }
+
+/* =========================================
+   INITIAL LOAD
+========================================= */
 
 loadSubjects()
 

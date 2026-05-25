@@ -83,28 +83,29 @@
     </div>
 
     <!-- NOTES -->
-<div class="glass-card note-card">
+    <div class="glass-card note-card">
 
-  <h2>
-    📝 Quick Notes
-  </h2>
+      <h2>📝 Quick Notes</h2>
 
-  <textarea
-    id="quickNotes"
-    placeholder="Write something..."></textarea>
+      <textarea
+        placeholder="Write something..."></textarea>
 
-  <button
-    class="save-note-btn"
-    onclick="addQuickNote()">
+    </div>
 
-    Add Note
+    <!-- TEAM PROGRESS -->
+    <div class="glass-card squad-card">
 
-  </button>
+      <h2>
+        👥 Squad Progress
+      </h2>
 
-  <p id="saveStatus">
-  </p>
+      <div id="squadContainer">
 
-</div>
+        Loading...
+
+      </div>
+
+    </div>
 
     <!-- CONTINUE -->
     <div class="glass-card continue-card">
@@ -124,21 +125,6 @@
         Open Dashboard
 
       </button>
-
-    </div>
-
-    <!-- SQUAD -->
-    <div class="glass-card squad-card">
-
-      <h2>
-        👥 Squad Progress
-      </h2>
-
-      <div id="squadContainer">
-
-        Loading...
-
-      </div>
 
     </div>
 
@@ -193,37 +179,29 @@ updateClock()
 
 async function loadUser(){
 
-  try {
+  const { data } =
+    await supabaseClient.auth.getUser()
 
-    const { data } =
-      await supabaseClient.auth.getUser()
+  const user = data?.user
 
-    const user = data?.user
+  if(!user) return
 
-    if(!user) return
+  const { data: profile } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
 
-    const { data: profile } =
-      await supabaseClient
-        .from("profiles")
-        .select("name")
-        .eq("id", user.id)
-        .single()
+  if(profile){
 
-    if(profile){
-
-      document.getElementById("welcomeText")
-        .innerText =
-        `Hey, ${profile.name} 👋`
-    }
-
-  } catch(err){
-
-    console.error(err)
+    document.getElementById("welcomeText")
+      .innerText = `Hey, ${profile.name} 👋`
   }
 }
 
 /* =========================================
-   LOAD TEAM PROGRESS - OPTIMIZED
+   LOAD TEAM PROGRESS
 ========================================= */
 
 async function loadSquadProgress(){
@@ -243,49 +221,41 @@ async function loadSquadProgress(){
 
       supabaseClient
         .from("profiles")
-        .select("id,name"),
+        .select("*"),
 
       supabaseClient
         .from("subtopics")
-        .select("id"),
+        .select("*"),
 
       supabaseClient
         .from("subtopic_progress")
-        .select("user_id")
+        .select("*")
 
     ])
 
     const profiles =
       profilesRes.data || []
 
-    const totalSubtopics =
-      subtopicsRes.data?.length || 0
+    const subtopics =
+      subtopicsRes.data || []
 
     const progress =
       progressRes.data || []
 
-    /* USER COMPLETION MAP */
-
-    const userMap = {}
-
-    for(const row of progress){
-
-      if(!userMap[row.user_id]){
-
-        userMap[row.user_id] = 0
-      }
-
-      userMap[row.user_id]++
-    }
-
-    /* BUILD HTML */
+    const totalSubtopics =
+      subtopics.length
 
     let html = ""
 
     for(const profile of profiles){
 
+      const userProgress =
+        progress.filter(
+          p => p.user_id === profile.id
+        )
+
       const completed =
-        userMap[profile.id] || 0
+        userProgress.length
 
       const percent =
         totalSubtopics > 0
@@ -341,121 +311,9 @@ async function loadSquadProgress(){
   }
 }
 
-/* =========================================
-   INITIAL LOAD
-========================================= */
-
 loadUser()
 
 loadSquadProgress()
-
-/* =========================================
-   ADD QUICK NOTE
-========================================= */
-
-async function addQuickNote(){
-
-  const saveStatus =
-    document.getElementById("saveStatus")
-
-  try {
-
-    const textarea =
-      document.getElementById("quickNotes")
-
-    const text =
-      textarea.value.trim()
-
-    if(!text){
-
-      saveStatus.innerText =
-        "Enter a note"
-
-      return
-    }
-
-    /* GET USER */
-
-    const { data:userData , error:userError } =
-      await supabaseClient.auth.getUser()
-
-    if(userError){
-
-      console.error(userError)
-
-      saveStatus.innerText =
-        "User Error"
-
-      return
-    }
-
-    const user =
-      userData?.user
-
-    if(!user){
-
-      saveStatus.innerText =
-        "Not logged in"
-
-      return
-    }
-
-    /* GET PROFILE */
-
-    let userName = "User"
-
-    const { data:profile } =
-      await supabaseClient
-        .from("profiles")
-        .select("name")
-        .eq("id", user.id)
-        .maybeSingle()
-
-    if(profile?.name){
-
-      userName = profile.name
-    }
-
-    /* INSERT NOTE */
-
-    const { error } =
-      await supabaseClient
-        .from("notes")
-        .insert([{
-
-          user_id:user.id,
-
-          user_name:userName,
-
-          content:text
-
-        }])
-
-    if(error){
-
-      console.error(error)
-
-      saveStatus.innerText =
-        "Save Failed"
-
-      return
-    }
-
-    /* SUCCESS */
-
-    textarea.value = ""
-
-    saveStatus.innerText =
-      "Note Added"
-
-  } catch(err){
-
-    console.error(err)
-
-    saveStatus.innerText =
-      "Unexpected Error"
-  }
-}
 
 </script>
 

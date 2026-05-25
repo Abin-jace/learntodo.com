@@ -1,89 +1,20 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
-  <title>Study Workspace</title>
+  <meta charset="UTF-8">
+
+  <title>Dashboard</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="supabase.js"></script>
-
-  <style>
-
-    body{
-      margin:0;
-      font-family:Arial;
-      background:#0f172a;
-      color:white;
-      display:flex;
-      height:100vh;
-    }
-
-    /* SIDEBAR */
-    .sidebar{
-      width:230px;
-      background:#1e293b;
-      padding:20px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .title{
-      font-size:18px;
-      font-weight:bold;
-      margin-bottom:10px;
-    }
-
-    .nav-btn{
-      background:#334155;
-      color:white;
-      border:none;
-      padding:10px;
-      border-radius:10px;
-      cursor:pointer;
-      text-align:left;
-      transition:0.2s;
-    }
-
-    .nav-btn:hover{
-      background:#475569;
-    }
-
-    .active{
-      background:#38bdf8 !important;
-      color:black;
-      font-weight:bold;
-    }
-
-    /* MAIN */
-    .main{
-      flex:1;
-      padding:25px;
-      overflow:auto;
-    }
-
-    .card{
-      background:#1e293b;
-      padding:20px;
-      border-radius:15px;
-      margin-bottom:15px;
-    }
-
-    .progress-bar{
-      width:100%;
-      background:#334155;
-      height:10px;
-      border-radius:10px;
-      overflow:hidden;
-      margin:6px 0 14px;
-    }
-
-    .progress-fill{
-      height:100%;
-      background:#38bdf8;
-    }
-
-  </style>
 
 </head>
 
@@ -92,18 +23,19 @@
 <!-- SIDEBAR -->
 <div class="sidebar">
 
-  <div class="title">📘 Study Workspace</div>
+  <button class="nav-btn" onclick="go('home.html')">
+    <i class="fa-solid fa-house"></i>
+    Home
+  </button>
 
-  <button id="dashBtn" class="nav-btn active" onclick="showDashboard()">
+  <button class="nav-btn" onclick="go('index.html')">
+    <i class="fa-solid fa-chart-line"></i>
     Dashboard
   </button>
 
-  <button id="notesBtn" class="nav-btn" onclick="goNotes()">
+  <button class="nav-btn" onclick="go('notes.html')">
+    <i class="fa-solid fa-note-sticky"></i>
     Notes
-  </button>
-
-  <button class="nav-btn" onclick="logout()">
-    Logout
   </button>
 
 </div>
@@ -111,114 +43,305 @@
 <!-- MAIN -->
 <div class="main">
 
-  <h1 id="pageTitle">Dashboard</h1>
+  <h1>📚 DevOps Roadmap</h1>
 
-  <div id="content">Loading...</div>
+  <div
+    id="subjectsContainer"
+    class="subjects-grid">
+
+  </div>
 
 </div>
 
 <script>
 
-let currentPage = "dashboard"
+/* =========================================
+   NAVIGATION
+========================================= */
 
-// -------------------
-// LOAD DASHBOARD
-// -------------------
-async function loadDashboard(){
+function go(page){
+  window.location.href = page
+}
 
-  const { data: profiles } =
-    await supabaseClient.from("profiles").select("*")
+/* =========================================
+   GET USER
+========================================= */
 
-  const { data: progress } =
-    await supabaseClient.from("progress").select("*")
+async function getUser(){
+
+  const { data } =
+    await supabaseClient.auth.getUser()
+
+  return data?.user
+}
+
+/* =========================================
+   TOGGLE WEEK
+========================================= */
+
+function toggleWeek(id){
+
+  const element =
+    document.getElementById(id)
+
+  element.classList.toggle("show-week")
+}
+
+/* =========================================
+   TOGGLE TOPIC
+========================================= */
+
+function toggleTopic(id){
+
+  const element =
+    document.getElementById(id)
+
+  element.classList.toggle("show-topic")
+}
+
+/* =========================================
+   TOGGLE SUBTOPIC
+========================================= */
+
+async function toggleSubtopic(subtopicId){
+
+  const user = await getUser()
+
+  const { data: existing } =
+    await supabaseClient
+      .from("subtopic_progress")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("subtopic_id", subtopicId)
+      .maybeSingle()
+
+  if(existing){
+
+    await supabaseClient
+      .from("subtopic_progress")
+      .delete()
+      .eq("id", existing.id)
+
+  } else {
+
+    await supabaseClient
+      .from("subtopic_progress")
+      .insert([{
+        user_id:user.id,
+        subtopic_id:subtopicId,
+        completed:true
+      }])
+  }
+
+  loadSubjects()
+}
+
+/* =========================================
+   LOAD SUBJECTS
+========================================= */
+
+async function loadSubjects(){
+
+  const user = await getUser()
+
+  const { data: subjects } =
+    await supabaseClient
+      .from("subjects")
+      .select("*")
+      .order("created_at", {
+        ascending:true
+      })
+
+  const container =
+    document.getElementById("subjectsContainer")
 
   let html = ""
 
-  profiles.forEach(p => {
+  for(const subject of subjects){
 
-    const prog = progress.find(x => x.user_id === p.id)
+    /* WEEKS */
+    const { data: weeks } =
+      await supabaseClient
+        .from("weeks")
+        .select("*")
+        .eq("subject_id", subject.id)
+        .order("week_number", {
+          ascending:true
+        })
+
+    /* SUBJECT SUBTOPICS */
+    const { data: topicData } =
+      await supabaseClient
+        .from("topics")
+        .select(`
+          *,
+          subtopics(*)
+        `)
+        .eq("subject_id", subject.id)
+
+    const allSubtopics =
+      topicData.flatMap(
+        t => t.subtopics || []
+      )
+
+    /* USER PROGRESS */
+    const { data: progress } =
+      await supabaseClient
+        .from("subtopic_progress")
+        .select("*")
+        .eq("user_id", user.id)
+
+    const completedIds =
+      progress.map(
+        p => p.subtopic_id
+      )
+
+    const totalSubtopics =
+      allSubtopics.length
+
+    const completedSubtopics =
+      allSubtopics.filter(
+        s => completedIds.includes(s.id)
+      ).length
+
+    const percent =
+      totalSubtopics > 0
+      ? Math.round(
+          (completedSubtopics / totalSubtopics) * 100
+        )
+      : 0
 
     html += `
-      <div class="card">
 
-        <h3>${p.name}</h3>
+      <div class="card subject-card">
 
-        <div>
-          <small>Linux</small>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${prog?.linux || 0}%"></div>
+        <h2>
+          📘 ${subject.name}
+        </h2>
+
+        <p>
+          Progress: ${percent}%
+        </p>
+
+    `
+
+    /* WEEKS */
+    for(const week of weeks){
+
+      const { data: topics } =
+        await supabaseClient
+          .from("topics")
+          .select("*")
+          .eq("week_id", week.id)
+
+      html += `
+
+        <div class="week-card">
+
+          <div
+            class="week-header"
+            onclick="toggleWeek('week-${week.id}')">
+
+            <span>
+              ▶ Week ${week.week_number}
+            </span>
+
+            <span>
+              ${week.title}
+            </span>
+
+          </div>
+
+          <div
+            id="week-${week.id}"
+            class="week-content">
+
+      `
+
+      /* TOPICS */
+      for(const topic of topics){
+
+        const { data: subtopics } =
+          await supabaseClient
+            .from("subtopics")
+            .select("*")
+            .eq("topic_id", topic.id)
+
+        html += `
+
+          <div class="topic-card">
+
+            <div
+              class="topic-header"
+              onclick="toggleTopic('topic-${topic.id}')">
+
+              ▶ ${topic.title}
+
+            </div>
+
+            <div
+              id="topic-${topic.id}"
+              class="topic-content">
+
+        `
+
+        /* SUBTOPICS */
+        for(const sub of subtopics){
+
+          const checked =
+            completedIds.includes(sub.id)
+
+          html += `
+
+            <div class="subtopic-item">
+
+              <label>
+
+                <input
+                  type="checkbox"
+
+                  ${
+                    checked
+                    ? "checked"
+                    : ""
+                  }
+
+                  onchange="
+                    toggleSubtopic(
+                      '${sub.id}'
+                    )
+                  "
+                >
+
+                ${sub.title}
+
+              </label>
+
+            </div>
+          `
+        }
+
+        html += `
+            </div>
+          </div>
+        `
+      }
+
+      html += `
           </div>
         </div>
+      `
+    }
 
-        <div>
-          <small>Docker</small>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${prog?.docker || 0}%"></div>
-          </div>
-        </div>
-
-        <div>
-          <small>Kubernetes</small>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${prog?.kubernetes || 0}%"></div>
-          </div>
-        </div>
-
+    html += `
       </div>
     `
-  })
-
-  document.getElementById("content").innerHTML = html
-}
-
-// -------------------
-// NAVIGATION (NO RELOAD STYLE)
-// -------------------
-function setActive(btn){
-
-  document.getElementById("dashBtn").classList.remove("active")
-  document.getElementById("notesBtn").classList.remove("active")
-
-  if(btn === "dashboard"){
-    document.getElementById("dashBtn").classList.add("active")
   }
 
-  if(btn === "notes"){
-    document.getElementById("notesBtn").classList.add("active")
-  }
-
+  container.innerHTML = html
 }
 
-// -------------------
-// PAGE SWITCH
-// -------------------
-function showDashboard(){
-
-  currentPage = "dashboard"
-
-  setActive("dashboard")
-
-  document.getElementById("pageTitle").innerText = "Dashboard"
-
-  loadDashboard()
-}
-
-function goNotes(){
-
-  window.location.href = "notes.html"
-
-}
-
-// -------------------
-// LOGOUT
-// -------------------
-async function logout(){
-  await supabaseClient.auth.signOut()
-  window.location.href = "login.html"
-}
-
-// INIT
-loadDashboard()
+loadSubjects()
 
 </script>
 
